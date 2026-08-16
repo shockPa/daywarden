@@ -9,6 +9,7 @@ import EntryTypePicker from "./components/EntryTypePicker";
 import TodayEntries from "./components/TodayEntries";
 
 import { builtInEntryTypes } from "./data/builtInEntryTypes";
+import CalendarView from "./components/CalendarView";
 
 import {
   addCustomEntryType,
@@ -36,6 +37,9 @@ import type {
   EntryTypePreferences,
   EntryValues,
 } from "./types/entryType";
+import Timeline from "./components/Timeline";
+
+type ViewMode = "today" | "calendar" | "log" | "search";
 
 function orderEntryTypes(
   entryTypes: EntryTypeDefinition[],
@@ -73,6 +77,17 @@ function App() {
     order: [],
     hiddenIds: [],
   });
+
+  const [activeView, setActiveView] = useState<ViewMode>("today");
+
+  function handleNavigate(view: ViewMode) {
+    setActiveView(view);
+
+    setManagingEntryTypes(false);
+    setCreatingEntryType(false);
+    setEditingEntry(null);
+    setSelectedEntryType(null);
+  }
 
   const [entries, setEntries] = useState<DaywardenEntry[]>([]);
 
@@ -224,6 +239,7 @@ function App() {
     if (!entryType) {
       return;
     }
+    setActiveView("today");
 
     setCreatingEntryType(false);
     setManagingEntryTypes(false);
@@ -370,9 +386,17 @@ function App() {
           </button>
         </div>
 
-        <p className="date">{today}</p>
+        {activeView === "today" && <p className="date">{today}</p>}
 
-        <h1>What did you do today?</h1>
+        <h1>
+          {activeView === "today" && "What did you do today?"}
+
+          {activeView === "log" && "Log"}
+
+          {activeView === "calendar" && "Calendar"}
+
+          {activeView === "search" && "Search"}
+        </h1>
       </header>
 
       {managingEntryTypes ? (
@@ -388,59 +412,111 @@ function App() {
         />
       ) : (
         <>
-          <EntryTypePicker
-            entryTypes={visibleEntryTypes}
-            selectedEntryTypeId={selectedEntryType?.id ?? null}
-            onSelect={handleSelectEntryType}
-          />
+          {activeView === "today" && (
+            <>
+              <EntryTypePicker
+                entryTypes={visibleEntryTypes}
+                selectedEntryTypeId={selectedEntryType?.id ?? null}
+                onSelect={handleSelectEntryType}
+              />
 
-          <button
-            className="create-entry-type"
-            type="button"
-            onClick={handleCreateEntryType}
-          >
-            + Create your own
-          </button>
+              <button
+                className="create-entry-type"
+                type="button"
+                onClick={handleCreateEntryType}
+              >
+                + Create your own
+              </button>
 
-          {creatingEntryType && (
-            <CreateEntryTypeForm
-              onSave={handleSaveEntryType}
-              onCancel={() => setCreatingEntryType(false)}
+              {creatingEntryType && (
+                <CreateEntryTypeForm
+                  onSave={handleSaveEntryType}
+                  onCancel={() => setCreatingEntryType(false)}
+                />
+              )}
+
+              {selectedEntryType && (
+                <DynamicEntryForm
+                  key={editingEntry?.id ?? selectedEntryType.id}
+                  entryType={selectedEntryType}
+                  initialValues={editingEntry?.values}
+                  submitLabel={editingEntry ? "Save changes" : "Save entry"}
+                  onSave={handleSaveEntry}
+                  onClose={() => {
+                    setEditingEntry(null);
+
+                    setSelectedEntryType(null);
+                  }}
+                />
+              )}
+
+              <TodayEntries
+                entries={entries}
+                entryTypes={allEntryTypeDefinitions}
+                onEdit={handleEditEntry}
+                onDelete={handleDeleteEntry}
+              />
+            </>
+          )}
+
+          {activeView === "log" && (
+            <Timeline
+              entries={entries}
+              entryTypes={allEntryTypeDefinitions}
+              onEdit={handleEditEntry}
+              onDelete={handleDeleteEntry}
             />
           )}
 
-          {selectedEntryType && (
-            <DynamicEntryForm
-              key={editingEntry?.id ?? selectedEntryType.id}
-              entryType={selectedEntryType}
-              initialValues={editingEntry?.values}
-              submitLabel={editingEntry ? "Save changes" : "Save entry"}
-              onSave={handleSaveEntry}
-              onClose={() => {
-                setEditingEntry(null);
-
-                setSelectedEntryType(null);
-              }}
+          {activeView === "calendar" && (
+            <CalendarView
+              entries={entries}
+              entryTypes={allEntryTypeDefinitions}
+              onEdit={handleEditEntry}
+              onDelete={handleDeleteEntry}
             />
           )}
 
-          <TodayEntries
-            entries={entries}
-            entryTypes={allEntryTypeDefinitions}
-            onEdit={handleEditEntry}
-            onDelete={handleDeleteEntry}
-          />
+          {activeView === "search" && (
+            <section className="placeholder-page">
+              <p>Search is coming later.</p>
+            </section>
+          )}
         </>
       )}
 
       <nav className="navigation">
-        <button className="nav-active">Today</button>
+        <button
+          className={activeView === "today" ? "nav-active" : ""}
+          type="button"
+          onClick={() => handleNavigate("today")}
+        >
+          Today
+        </button>
 
-        <button>Calendar</button>
+        <button
+          className={activeView === "calendar" ? "nav-active" : ""}
+          type="button"
+          onClick={() => handleNavigate("calendar")}
+        >
+          Calendar
+        </button>
 
-        <button>Log</button>
+        <button
+          className={activeView === "log" ? "nav-active" : ""}
+          type="button"
+          onClick={() => handleNavigate("log")}
+        >
+          Log
+        </button>
 
-        <button>Search</button>
+        <button
+          className={activeView === "search" ? "nav-active" : ""}
+          type="button"
+          onClick={() => handleNavigate("search")}
+        >
+          Search
+        </button>
       </nav>
     </main>
   );
