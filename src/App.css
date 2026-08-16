@@ -1,0 +1,245 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f3f3f0;
+  color: #202020;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  width: min(100%, 620px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 32px 20px 100px;
+}
+
+.header {
+  margin-bottom: 28px;
+}
+
+.app-name {
+  margin: 0 0 24px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.date {
+  margin: 0 0 6px;
+  color: #747474;
+  font-size: 0.9rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 7vw, 2.4rem);
+  line-height: 1.1;
+}
+
+h2 {
+  margin: 28px 0 12px;
+  font-size: 1rem;
+}
+
+.card {
+  padding: 20px;
+  background: white;
+  border: 1px solid #e5e5e0;
+  border-radius: 18px;
+}
+
+.note {
+  display: block;
+  width: 100%;
+  min-height: 130px;
+  padding: 14px;
+
+  border: 1px solid #d8d8d3;
+  border-radius: 12px;
+
+  background: #fafaf8;
+
+  resize: vertical;
+}
+
+.note:focus,
+.text-input:focus {
+  outline: 2px solid #222;
+  outline-offset: 2px;
+}
+
+.activities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.activities button {
+  min-height: 46px;
+  padding: 10px 12px;
+
+  border: 1px solid #d8d8d3;
+  border-radius: 10px;
+
+  background: #fafaf8;
+  color: #333;
+}
+
+.activities button.selected {
+  border-color: #222;
+  background: #222;
+  color: white;
+}
+
+.measurement {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.measurement-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.measurement-heading strong {
+  min-width: 40px;
+  text-align: right;
+}
+
+.measurement input[type="range"] {
+  width: 100%;
+}
+
+.text-input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px;
+
+  border: 1px solid #d8d8d3;
+  border-radius: 10px;
+
+  background: #fafaf8;
+}
+
+.save {
+  width: 100%;
+  margin-top: 32px;
+  padding: 14px;
+
+  border: 0;
+  border-radius: 12px;
+
+  background: #222;
+  color: white;
+
+  font-weight: 650;
+}
+
+.today-entries {
+  margin-top: 32px;
+}
+
+.empty-state {
+  color: #777;
+}
+
+.entry-card {
+  margin-bottom: 12px;
+  padding: 18px;
+
+  background: white;
+  border: 1px solid #e5e5e0;
+  border-radius: 16px;
+}
+
+.entry-time {
+  margin-bottom: 6px;
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.entry-activities {
+  font-weight: 650;
+}
+
+.entry-note {
+  margin: 12px 0;
+  line-height: 1.5;
+}
+
+.entry-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-top: 12px;
+}
+
+.entry-metrics span {
+  padding: 5px 8px;
+
+  background: #f1f1ee;
+  border-radius: 7px;
+
+  font-size: 0.8rem;
+}
+
+.pain-location {
+  margin: 12px 0 0;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.navigation {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  z-index: 10;
+
+  display: flex;
+  justify-content: space-around;
+
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 12px 8px;
+
+  background: white;
+  border-top: 1px solid #ddd;
+}
+
+.navigation button {
+  padding: 8px;
+
+  border: 0;
+  background: none;
+  color: #777;
+}
+
+.navigation .nav-active {
+  color: #111;
+  font-weight: 700;
+}
