@@ -1,0 +1,6 @@
+@font-face {
+  font-family: "Daywarden";
+  src: url("./assets/fonts/daywarden.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
