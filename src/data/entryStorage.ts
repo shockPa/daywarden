@@ -1,70 +1,55 @@
-import { Preferences } from "@capacitor/preferences";
+import { getDaywardenDb } from "./db";
 
 import type { DaywardenEntry } from "../types/entry";
 
-const ENTRIES_KEY = "daywarden_entries_v1";
-
 export async function getEntries(): Promise<DaywardenEntry[]> {
-  const { value } = await Preferences.get({
-    key: ENTRIES_KEY,
-  });
+  const database = await getDaywardenDb();
 
-  if (!value) {
-    return [];
-  }
+  const entries = await database.getAll("entries");
 
-  try {
-    const parsed = JSON.parse(value);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed as DaywardenEntry[];
-  } catch {
-    return [];
-  }
+  return entries.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
 
 export async function saveEntries(entries: DaywardenEntry[]): Promise<void> {
-  await Preferences.set({
-    key: ENTRIES_KEY,
-    value: JSON.stringify(entries),
-  });
+  const database = await getDaywardenDb();
+
+  const transaction = database.transaction("entries", "readwrite");
+
+  await transaction.store.clear();
+
+  for (const entry of entries) {
+    await transaction.store.put(entry);
+  }
+
+  await transaction.done;
 }
 
 export async function addEntry(
   entry: DaywardenEntry,
 ): Promise<DaywardenEntry[]> {
-  const entries = await getEntries();
+  const database = await getDaywardenDb();
 
-  const updatedEntries = [entry, ...entries];
+  await database.add("entries", entry);
 
-  await saveEntries(updatedEntries);
-
-  return updatedEntries;
+  return getEntries();
 }
 
 export async function updateEntry(
   updatedEntry: DaywardenEntry,
 ): Promise<DaywardenEntry[]> {
-  const entries = await getEntries();
+  const database = await getDaywardenDb();
 
-  const updatedEntries = entries.map((entry) =>
-    entry.id === updatedEntry.id ? updatedEntry : entry,
-  );
+  await database.put("entries", updatedEntry);
 
-  await saveEntries(updatedEntries);
-
-  return updatedEntries;
+  return getEntries();
 }
 
 export async function deleteEntry(entryId: string): Promise<DaywardenEntry[]> {
-  const entries = await getEntries();
+  const database = await getDaywardenDb();
 
-  const updatedEntries = entries.filter((entry) => entry.id !== entryId);
+  await database.delete("entries", entryId);
 
-  await saveEntries(updatedEntries);
-
-  return updatedEntries;
+  return getEntries();
 }

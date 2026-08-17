@@ -1,8 +1,8 @@
-import { Preferences } from "@capacitor/preferences";
+import { getDaywardenDb } from "./db";
 
 import type { EntryTypePreferences } from "../types/entryType";
 
-const PREFERENCES_KEY = "daywarden_entry_type_preferences_v1";
+const PREFERENCES_KEY = "entryTypePreferences";
 
 const defaultPreferences: EntryTypePreferences = {
   order: [],
@@ -10,32 +10,25 @@ const defaultPreferences: EntryTypePreferences = {
 };
 
 export async function getEntryTypePreferences(): Promise<EntryTypePreferences> {
-  const { value } = await Preferences.get({
-    key: PREFERENCES_KEY,
-  });
+  const database = await getDaywardenDb();
 
-  if (!value) {
+  const value = await database.get("settings", PREFERENCES_KEY);
+
+  if (!value || typeof value === "boolean") {
     return defaultPreferences;
   }
 
-  try {
-    const parsed = JSON.parse(value);
+  return {
+    order: Array.isArray(value.order) ? value.order : [],
 
-    return {
-      order: Array.isArray(parsed.order) ? parsed.order : [],
-
-      hiddenIds: Array.isArray(parsed.hiddenIds) ? parsed.hiddenIds : [],
-    };
-  } catch {
-    return defaultPreferences;
-  }
+    hiddenIds: Array.isArray(value.hiddenIds) ? value.hiddenIds : [],
+  };
 }
 
 export async function saveEntryTypePreferences(
   preferences: EntryTypePreferences,
 ): Promise<void> {
-  await Preferences.set({
-    key: PREFERENCES_KEY,
-    value: JSON.stringify(preferences),
-  });
+  const database = await getDaywardenDb();
+
+  await database.put("settings", preferences, PREFERENCES_KEY);
 }

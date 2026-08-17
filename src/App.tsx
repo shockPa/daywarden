@@ -38,6 +38,7 @@ import type {
   EntryValues,
 } from "./types/entryType";
 import Timeline from "./components/Timeline";
+import { migrateLegacyPreferences } from "./data/migrateLegacyPreferences";
 
 type ViewMode = "today" | "calendar" | "log" | "search";
 
@@ -100,6 +101,7 @@ function App() {
 
   useEffect(() => {
     async function loadData() {
+      await migrateLegacyPreferences();
       const [savedCustomEntryTypes, savedPreferences, savedEntries] =
         await Promise.all([
           getCustomEntryTypes(),

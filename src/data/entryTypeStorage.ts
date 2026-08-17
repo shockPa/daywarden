@@ -1,86 +1,73 @@
-import { Preferences } from "@capacitor/preferences";
+import { getDaywardenDb } from "./db";
 
 import type { EntryTypeDefinition } from "../types/entryType";
 
-const CUSTOM_ENTRY_TYPES_KEY = "daywarden_custom_entry_types_v1";
-
 export async function getCustomEntryTypes(): Promise<EntryTypeDefinition[]> {
-  const { value } = await Preferences.get({
-    key: CUSTOM_ENTRY_TYPES_KEY,
-  });
+  const database = await getDaywardenDb();
 
-  if (!value) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed as EntryTypeDefinition[];
-  } catch {
-    return [];
-  }
+  return database.getAll("customEntryTypes");
 }
 
 export async function saveCustomEntryTypes(
   entryTypes: EntryTypeDefinition[],
 ): Promise<void> {
-  await Preferences.set({
-    key: CUSTOM_ENTRY_TYPES_KEY,
-    value: JSON.stringify(entryTypes),
-  });
+  const database = await getDaywardenDb();
+
+  const transaction = database.transaction("customEntryTypes", "readwrite");
+
+  await transaction.store.clear();
+
+  for (const entryType of entryTypes) {
+    await transaction.store.put(entryType);
+  }
+
+  await transaction.done;
 }
 
 export async function addCustomEntryType(
   entryType: EntryTypeDefinition,
 ): Promise<EntryTypeDefinition[]> {
-  const current = await getCustomEntryTypes();
+  const database = await getDaywardenDb();
 
-  const updated = [...current, entryType];
+  await database.put("customEntryTypes", entryType);
 
-  await saveCustomEntryTypes(updated);
-
-  return updated;
+  return getCustomEntryTypes();
 }
 
 export async function archiveCustomEntryType(
   entryTypeId: string,
 ): Promise<EntryTypeDefinition[]> {
-  const current = await getCustomEntryTypes();
+  const database = await getDaywardenDb();
 
-  const updated = current.map((entryType) =>
-    entryType.id === entryTypeId
-      ? {
-          ...entryType,
-          archived: true,
-        }
-      : entryType,
-  );
+  const entryType = await database.get("customEntryTypes", entryTypeId);
 
-  await saveCustomEntryTypes(updated);
+  if (!entryType) {
+    return getCustomEntryTypes();
+  }
 
-  return updated;
+  await database.put("customEntryTypes", {
+    ...entryType,
+    archived: true,
+  });
+
+  return getCustomEntryTypes();
 }
 
 export async function restoreCustomEntryType(
   entryTypeId: string,
 ): Promise<EntryTypeDefinition[]> {
-  const current = await getCustomEntryTypes();
+  const database = await getDaywardenDb();
 
-  const updated = current.map((entryType) =>
-    entryType.id === entryTypeId
-      ? {
-          ...entryType,
-          archived: false,
-        }
-      : entryType,
-  );
+  const entryType = await database.get("customEntryTypes", entryTypeId);
 
-  await saveCustomEntryTypes(updated);
+  if (!entryType) {
+    return getCustomEntryTypes();
+  }
 
-  return updated;
+  await database.put("customEntryTypes", {
+    ...entryType,
+    archived: false,
+  });
+
+  return getCustomEntryTypes();
 }
