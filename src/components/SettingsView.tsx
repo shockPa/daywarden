@@ -1,4 +1,5 @@
 import type { ThemeMode } from "../types/settings";
+import BackupRestorePanel from "./BackupRestorePanel";
 
 interface SettingsViewProps {
   themeMode: ThemeMode;
@@ -141,13 +142,7 @@ function SettingsView({
       <section className="settings-section">
         <h2>Data</h2>
 
-        <div className="settings-row">
-          <div>
-            <strong>Backup & restore</strong>
-
-            <p>Encrypted local backup is coming next.</p>
-          </div>
-        </div>
+        <BackupRestorePanel />
       </section>
 
       <section className="settings-section">

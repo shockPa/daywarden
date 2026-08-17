@@ -1543,3 +1543,75 @@ body,
 
   font-size: 0.75rem;
 }
+
+/* Backup & restore */
+
+.backup-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.backup-block {
+  display: grid;
+  gap: 12px;
+}
+
+.backup-block > p {
+  margin: 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.8rem;
+
+  line-height: 1.5;
+}
+
+.backup-block label {
+  display: grid;
+  gap: 7px;
+
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.backup-block input {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 11px;
+
+  border: 1px solid var(--dw-border);
+
+  border-radius: 10px;
+
+  background: var(--dw-surface-soft);
+
+  color: var(--dw-text);
+}
+
+.backup-block input[type="file"] {
+  font-weight: 400;
+}
+
+.backup-warning {
+  font-size: 0.75rem !important;
+
+  color: var(--dw-muted) !important;
+}
+
+.backup-divider {
+  height: 1px;
+
+  background: var(--dw-border);
+}
+
+.selected-backup-file {
+  overflow-wrap: anywhere;
+
+  font-size: 0.75rem !important;
+}
+
+.destructive-action {
+  border-color: #a95757;
+}
