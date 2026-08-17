@@ -38,7 +38,19 @@ import type {
   EntryValues,
 } from "./types/entryType";
 import Timeline from "./components/Timeline";
-import { migrateLegacyPreferences } from "./data/migrateLegacyPreferences";
+
+import { useRegisterSW } from "virtual:pwa-register/react";
+
+import SettingsView from "./components/SettingsView";
+
+import {
+  getLastUpdateCheck,
+  getThemeMode,
+  saveLastUpdateCheck,
+  saveThemeMode,
+} from "./data/settingsStorage";
+
+import type { ThemeMode } from "./types/settings";
 
 type ViewMode = "today" | "calendar" | "log" | "search";
 
@@ -99,25 +111,139 @@ function App() {
 
   const [managingEntryTypes, setManagingEntryTypes] = useState(false);
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
+
+  const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<
+    ServiceWorkerRegistration | undefined
+  >(undefined);
+
+  const [offlineCapable, setOfflineCapable] = useState(false);
+
+  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+
+  const [lastUpdateCheck, setLastUpdateCheck] = useState<string | null>(null);
+
+  const [updateMessage, setUpdateMessage] = useState("");
+
+  const {
+    offlineReady: [offlineReady],
+
+    needRefresh: [needRefresh],
+
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegisteredSW(_serviceWorkerUrl, registration) {
+      setServiceWorkerRegistration(registration);
+
+      if (registration?.active) {
+        setOfflineCapable(true);
+      }
+    },
+
+    onRegisterError(error) {
+      console.error("Daywarden service worker registration failed:", error);
+    },
+  });
+
   useEffect(() => {
     async function loadData() {
-      await migrateLegacyPreferences();
-      const [savedCustomEntryTypes, savedPreferences, savedEntries] =
-        await Promise.all([
-          getCustomEntryTypes(),
-          getEntryTypePreferences(),
-          getEntries(),
-        ]);
+      const [
+        savedCustomEntryTypes,
+        savedPreferences,
+        savedEntries,
+        savedThemeMode,
+        savedLastUpdateCheck,
+      ] = await Promise.all([
+        getCustomEntryTypes(),
+        getEntryTypePreferences(),
+        getEntries(),
+        getThemeMode(),
+        getLastUpdateCheck(),
+      ]);
 
       setCustomEntryTypes(savedCustomEntryTypes);
 
       setPreferences(savedPreferences);
 
       setEntries(savedEntries);
+
+      setThemeMode(savedThemeMode);
+
+      setLastUpdateCheck(savedLastUpdateCheck);
     }
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode;
+  }, [themeMode]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) {
+      return;
+    }
+
+    navigator.serviceWorker.ready
+      .then(() => {
+        setOfflineCapable(true);
+      })
+      .catch(() => {
+        setOfflineCapable(false);
+      });
+  }, []);
+
+  async function handleThemeChange(mode: ThemeMode) {
+    setThemeMode(mode);
+
+    await saveThemeMode(mode);
+  }
+
+  async function handleCheckForUpdates() {
+    setCheckingForUpdates(true);
+
+    setUpdateMessage("");
+
+    try {
+      if (!navigator.onLine) {
+        setUpdateMessage(
+          "You're offline. Connect to the internet to check for updates.",
+        );
+
+        return;
+      }
+
+      const registration =
+        serviceWorkerRegistration ??
+        (await navigator.serviceWorker.getRegistration());
+
+      if (!registration) {
+        setUpdateMessage("The offline service is not ready yet.");
+
+        return;
+      }
+
+      await registration.update();
+
+      const checkedAt = new Date().toISOString();
+
+      setLastUpdateCheck(checkedAt);
+
+      await saveLastUpdateCheck(checkedAt);
+
+      setUpdateMessage("Update check complete.");
+    } catch {
+      setUpdateMessage("Daywarden couldn't check for updates.");
+    } finally {
+      setCheckingForUpdates(false);
+    }
+  }
+
+  function handleInstallUpdate() {
+    void updateServiceWorker(true);
+  }
 
   /*
    * Include archived definitions here
@@ -375,13 +501,15 @@ function App() {
           <button
             className="settings-button"
             type="button"
-            aria-label="Manage entry types"
+            aria-label="Settings"
             onClick={() => {
               setSelectedEntryType(null);
 
               setCreatingEntryType(false);
 
-              setManagingEntryTypes((current) => !current);
+              setManagingEntryTypes(false);
+
+              setSettingsOpen(true);
             }}
           >
             ⚙
@@ -401,7 +529,24 @@ function App() {
         </h1>
       </header>
 
-      {managingEntryTypes ? (
+      {settingsOpen ? (
+        <SettingsView
+          themeMode={themeMode}
+          offlineReady={offlineCapable || offlineReady}
+          needRefresh={needRefresh}
+          checkingForUpdates={checkingForUpdates}
+          lastUpdateCheck={lastUpdateCheck}
+          updateMessage={updateMessage}
+          onThemeChange={handleThemeChange}
+          onCheckForUpdates={handleCheckForUpdates}
+          onInstallUpdate={handleInstallUpdate}
+          onManageEntryTypes={() => {
+            setSettingsOpen(false);
+            setManagingEntryTypes(true);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : managingEntryTypes ? (
         <EntryTypeManager
           entryTypes={orderedEntryTypes}
           removedCustomEntryTypes={removedCustomEntryTypes}
@@ -410,7 +555,10 @@ function App() {
           onMove={handleMove}
           onRemove={handleRemove}
           onRestore={handleRestore}
-          onClose={() => setManagingEntryTypes(false)}
+          onClose={() => {
+            setManagingEntryTypes(false);
+            setSettingsOpen(true);
+          }}
         />
       ) : (
         <>
@@ -487,39 +635,41 @@ function App() {
         </>
       )}
 
-      <nav className="navigation">
-        <button
-          className={activeView === "today" ? "nav-active" : ""}
-          type="button"
-          onClick={() => handleNavigate("today")}
-        >
-          Today
-        </button>
+      {!settingsOpen && !managingEntryTypes && (
+        <nav className="navigation">
+          <button
+            className={activeView === "today" ? "nav-active" : ""}
+            type="button"
+            onClick={() => handleNavigate("today")}
+          >
+            Today
+          </button>
 
-        <button
-          className={activeView === "calendar" ? "nav-active" : ""}
-          type="button"
-          onClick={() => handleNavigate("calendar")}
-        >
-          Calendar
-        </button>
+          <button
+            className={activeView === "calendar" ? "nav-active" : ""}
+            type="button"
+            onClick={() => handleNavigate("calendar")}
+          >
+            Calendar
+          </button>
 
-        <button
-          className={activeView === "log" ? "nav-active" : ""}
-          type="button"
-          onClick={() => handleNavigate("log")}
-        >
-          Log
-        </button>
+          <button
+            className={activeView === "log" ? "nav-active" : ""}
+            type="button"
+            onClick={() => handleNavigate("log")}
+          >
+            Log
+          </button>
 
-        <button
-          className={activeView === "search" ? "nav-active" : ""}
-          type="button"
-          onClick={() => handleNavigate("search")}
-        >
-          Search
-        </button>
-      </nav>
+          <button
+            className={activeView === "search" ? "nav-active" : ""}
+            type="button"
+            onClick={() => handleNavigate("search")}
+          >
+            Search
+          </button>
+        </nav>
+      )}
     </main>
   );
 }

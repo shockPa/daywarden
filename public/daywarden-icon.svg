@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024"
+     xmlns="http://www.w3.org/2000/svg">
+  <!-- Daywarden app icon — light -->
+  <rect width="1024" height="1024" rx="220" fill="#FAF8F3"/>
+
+  <!-- Row 1: red → orange -->
+  <rect x="150" y="176" width="140" height="140" rx="26" fill="#E63B32"/>
+  <rect x="322" y="176" width="140" height="140" rx="26" fill="#F05A2A"/>
+  <rect x="494" y="176" width="140" height="140" rx="26" fill="#F47A22"/>
+  <rect x="666" y="176" width="140" height="140" rx="26" fill="#F7941D"/>
+
+  <!-- Row 2: orange → yellow -->
+  <rect x="150" y="348" width="140" height="140" rx="26" fill="#F9A825"/>
+  <rect x="322" y="348" width="140" height="140" rx="26" fill="#F6B91F"/>
+  <rect x="494" y="348" width="140" height="140" rx="26" fill="#F4C542"/>
+
+  <!-- Row 3: yellow-green → green -->
+  <rect x="150" y="520" width="140" height="140" rx="26" fill="#9DBB3B"/>
+  <rect x="322" y="520" width="140" height="140" rx="26" fill="#79B83A"/>
+  <rect x="494" y="520" width="140" height="140" rx="26" fill="#43A047"/>
+
+  <!-- Bookmark occupying column 4 across rows 2–3 -->
+  <path d="
+    M 692 348
+    H 780
+    Q 806 348 806 374
+    V 648
+    Q 806 670 790 658
+    L 736 612
+    L 682 658
+    Q 666 670 666 648
+    V 374
+    Q 666 348 692 348
+    Z"
+    fill="#1E232B"/>
+</svg>

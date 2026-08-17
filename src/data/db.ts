@@ -6,6 +6,7 @@ import type {
   EntryTypeDefinition,
   EntryTypePreferences,
 } from "../types/entryType";
+import type { ThemeMode } from "../types/settings";
 
 interface DaywardenDatabase extends DBSchema {
   entries: {
@@ -28,7 +29,7 @@ interface DaywardenDatabase extends DBSchema {
   settings: {
     key: string;
 
-    value: EntryTypePreferences | boolean;
+    value: EntryTypePreferences | ThemeMode | boolean | string;
   };
 }
 

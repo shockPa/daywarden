@@ -14,7 +14,7 @@ export async function getEntryTypePreferences(): Promise<EntryTypePreferences> {
 
   const value = await database.get("settings", PREFERENCES_KEY);
 
-  if (!value || typeof value === "boolean") {
+  if (!value || typeof value !== "object") {
     return defaultPreferences;
   }
 
