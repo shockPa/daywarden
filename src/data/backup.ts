@@ -1,17 +1,26 @@
 import { getDaywardenDb } from "./db";
 
+import type { DaywardenSettingValue } from "./db";
+
 import type { DaywardenEntry } from "../types/entry";
-import type {
-  EntryTypeDefinition,
-  EntryTypePreferences,
-} from "../types/entryType";
-import type { ThemeMode } from "../types/settings";
 
-type BackupSettingValue = EntryTypePreferences | ThemeMode | boolean | string;
+import type { EntryTypeDefinition } from "../types/entryType";
 
-interface DaywardenBackupPayload {
+import {
+  DEFAULT_LIBRARY_FOLDER_ID,
+  type LibraryFolder,
+  type LibraryItem,
+} from "../types/library";
+
+import type { ActiveTimer } from "../types/timer";
+
+type BackupSettingEntry = [string, DaywardenSettingValue];
+
+interface BackupPayloadV1 {
   format: "daywarden-backup";
+
   version: 1;
+
   createdAt: string;
 
   data: {
@@ -19,9 +28,33 @@ interface DaywardenBackupPayload {
 
     customEntryTypes: EntryTypeDefinition[];
 
-    settings: Array<[string, BackupSettingValue]>;
+    settings: BackupSettingEntry[];
   };
 }
+
+interface BackupPayloadV2 {
+  format: "daywarden-backup";
+
+  version: 2;
+
+  createdAt: string;
+
+  data: {
+    entries: DaywardenEntry[];
+
+    customEntryTypes: EntryTypeDefinition[];
+
+    settings: BackupSettingEntry[];
+
+    libraryFolders: LibraryFolder[];
+
+    libraryItems: LibraryItem[];
+
+    activeTimers: ActiveTimer[];
+  };
+}
+
+type DaywardenBackupPayload = BackupPayloadV1 | BackupPayloadV2;
 
 interface EncryptedBackupEnvelope {
   format: "daywarden-encrypted-backup";
@@ -51,14 +84,6 @@ const encoder = new TextEncoder();
 
 const decoder = new TextDecoder();
 
-function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  const copy = new Uint8Array(bytes.byteLength);
-
-  copy.set(bytes);
-
-  return copy.buffer;
-}
-
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
 
@@ -83,14 +108,29 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
+/*
+ * Web Crypto's TypeScript definitions
+ * require a normal ArrayBuffer rather
+ * than the broader ArrayBufferLike.
+ */
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+
+  copy.set(bytes);
+
+  return copy.buffer;
+}
+
 async function deriveEncryptionKey(
   password: string,
   salt: Uint8Array,
   iterations: number,
 ): Promise<CryptoKey> {
+  const passwordBytes = encoder.encode(password);
+
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(password),
+    bytesToArrayBuffer(passwordBytes),
     "PBKDF2",
     false,
     ["deriveKey"],
@@ -99,13 +139,17 @@ async function deriveEncryptionKey(
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
+
       hash: "SHA-256",
+
       salt: bytesToArrayBuffer(salt),
+
       iterations,
     },
     keyMaterial,
     {
       name: "AES-GCM",
+
       length: 256,
     },
     false,
@@ -113,45 +157,84 @@ async function deriveEncryptionKey(
   );
 }
 
-async function createBackupPayload(): Promise<DaywardenBackupPayload> {
+async function createBackupPayload(): Promise<BackupPayloadV2> {
   const database = await getDaywardenDb();
 
   const transaction = database.transaction(
-    ["entries", "customEntryTypes", "settings"],
+    [
+      "entries",
+      "customEntryTypes",
+      "settings",
+      "libraryFolders",
+      "libraryItems",
+      "activeTimers",
+    ],
     "readonly",
   );
 
-  const entries = await transaction.objectStore("entries").getAll();
+  const entryStore = transaction.objectStore("entries");
 
-  const customEntryTypes = await transaction
-    .objectStore("customEntryTypes")
-    .getAll();
-
-  const settings: Array<[string, BackupSettingValue]> = [];
+  const entryTypeStore = transaction.objectStore("customEntryTypes");
 
   const settingsStore = transaction.objectStore("settings");
 
-  let cursor = await settingsStore.openCursor();
+  const folderStore = transaction.objectStore("libraryFolders");
 
-  while (cursor) {
-    settings.push([String(cursor.key), cursor.value]);
+  const libraryItemStore = transaction.objectStore("libraryItems");
 
-    cursor = await cursor.continue();
-  }
+  const timerStore = transaction.objectStore("activeTimers");
+
+  const [
+    entries,
+    customEntryTypes,
+    settingKeys,
+    settingValues,
+    libraryFolders,
+    libraryItems,
+    activeTimers,
+  ] = await Promise.all([
+    entryStore.getAll(),
+
+    entryTypeStore.getAll(),
+
+    settingsStore.getAllKeys(),
+
+    settingsStore.getAll(),
+
+    folderStore.getAll(),
+
+    libraryItemStore.getAll(),
+
+    timerStore.getAll(),
+  ]);
 
   await transaction.done;
+
+  const settings: BackupSettingEntry[] = settingKeys.map((key, index) => [
+    String(key),
+
+    settingValues[index],
+  ]);
 
   return {
     format: "daywarden-backup",
 
-    version: 1,
+    version: 2,
 
     createdAt: new Date().toISOString(),
 
     data: {
       entries,
+
       customEntryTypes,
+
       settings,
+
+      libraryFolders,
+
+      libraryItems,
+
+      activeTimers,
     },
   };
 }
@@ -174,7 +257,7 @@ async function encryptBackup(password: string): Promise<string> {
       iv: bytesToArrayBuffer(iv),
     },
     key,
-    plaintext,
+    bytesToArrayBuffer(plaintext),
   );
 
   const envelope: EncryptedBackupEnvelope = {
@@ -268,7 +351,19 @@ function isEncryptedEnvelope(value: unknown): value is EncryptedBackupEnvelope {
   );
 }
 
-function isBackupPayload(value: unknown): value is DaywardenBackupPayload {
+function hasValidSettings(value: unknown): value is BackupSettingEntry[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (setting) =>
+        Array.isArray(setting) &&
+        setting.length === 2 &&
+        typeof setting[0] === "string",
+    )
+  );
+}
+
+function isBackupPayloadV1(value: unknown): value is BackupPayloadV1 {
   if (!isRecord(value)) {
     return false;
   }
@@ -282,21 +377,34 @@ function isBackupPayload(value: unknown): value is DaywardenBackupPayload {
     return false;
   }
 
-  const { entries, customEntryTypes, settings } = value.data;
+  return (
+    Array.isArray(value.data.entries) &&
+    Array.isArray(value.data.customEntryTypes) &&
+    hasValidSettings(value.data.settings)
+  );
+}
+
+function isBackupPayloadV2(value: unknown): value is BackupPayloadV2 {
+  if (!isRecord(value)) {
+    return false;
+  }
 
   if (
-    !Array.isArray(entries) ||
-    !Array.isArray(customEntryTypes) ||
-    !Array.isArray(settings)
+    value.format !== "daywarden-backup" ||
+    value.version !== 2 ||
+    typeof value.createdAt !== "string" ||
+    !isRecord(value.data)
   ) {
     return false;
   }
 
-  return settings.every(
-    (setting) =>
-      Array.isArray(setting) &&
-      setting.length === 2 &&
-      typeof setting[0] === "string",
+  return (
+    Array.isArray(value.data.entries) &&
+    Array.isArray(value.data.customEntryTypes) &&
+    hasValidSettings(value.data.settings) &&
+    Array.isArray(value.data.libraryFolders) &&
+    Array.isArray(value.data.libraryItems) &&
+    Array.isArray(value.data.activeTimers)
   );
 }
 
@@ -352,11 +460,31 @@ async function decryptBackup(
     throw new Error("The backup contents could not be read.");
   }
 
-  if (!isBackupPayload(payload)) {
-    throw new Error("This Daywarden backup uses an unsupported format.");
+  if (isBackupPayloadV2(payload)) {
+    return payload;
   }
 
-  return payload;
+  if (isBackupPayloadV1(payload)) {
+    return payload;
+  }
+
+  throw new Error("This Daywarden backup uses an unsupported format.");
+}
+
+function createInboxFolder(): LibraryFolder {
+  const now = new Date().toISOString();
+
+  return {
+    id: DEFAULT_LIBRARY_FOLDER_ID,
+
+    name: "Inbox",
+
+    sortOrder: 0,
+
+    createdAt: now,
+
+    updatedAt: now,
+  };
 }
 
 export async function restoreEncryptedBackup(
@@ -366,15 +494,22 @@ export async function restoreEncryptedBackup(
   const contents = await file.text();
 
   /*
-   * Decrypt and validate everything
-   * BEFORE altering IndexedDB.
+   * Decrypt and validate BEFORE
+   * touching the current database.
    */
   const backup = await decryptBackup(contents, password);
 
   const database = await getDaywardenDb();
 
   const transaction = database.transaction(
-    ["entries", "customEntryTypes", "settings"],
+    [
+      "entries",
+      "customEntryTypes",
+      "settings",
+      "libraryFolders",
+      "libraryItems",
+      "activeTimers",
+    ],
     "readwrite",
   );
 
@@ -384,11 +519,29 @@ export async function restoreEncryptedBackup(
 
   const settingsStore = transaction.objectStore("settings");
 
-  await entryStore.clear();
+  const folderStore = transaction.objectStore("libraryFolders");
 
-  await entryTypeStore.clear();
+  const libraryItemStore = transaction.objectStore("libraryItems");
 
-  await settingsStore.clear();
+  const timerStore = transaction.objectStore("activeTimers");
+
+  /*
+   * Restore means replacement,
+   * not merging.
+   */
+  await Promise.all([
+    entryStore.clear(),
+
+    entryTypeStore.clear(),
+
+    settingsStore.clear(),
+
+    folderStore.clear(),
+
+    libraryItemStore.clear(),
+
+    timerStore.clear(),
+  ]);
 
   for (const entry of backup.data.entries) {
     await entryStore.put(entry);
@@ -400,6 +553,44 @@ export async function restoreEncryptedBackup(
 
   for (const [key, value] of backup.data.settings) {
     await settingsStore.put(value, key);
+  }
+
+  if (backup.version === 2) {
+    let hasInbox = false;
+
+    for (const folder of backup.data.libraryFolders) {
+      await folderStore.put(folder);
+
+      if (folder.id === DEFAULT_LIBRARY_FOLDER_ID) {
+        hasInbox = true;
+      }
+    }
+
+    /*
+     * Protect against a damaged or
+     * unusual backup without Inbox.
+     */
+    if (!hasInbox) {
+      await folderStore.put(createInboxFolder());
+    }
+
+    for (const item of backup.data.libraryItems) {
+      await libraryItemStore.put(item);
+    }
+
+    for (const timer of backup.data.activeTimers) {
+      await timerStore.put(timer);
+    }
+  } else {
+    /*
+     * Version-1 backups existed
+     * before Library and timers.
+     *
+     * Restoring one therefore gives
+     * us an empty Library with Inbox
+     * and no running timers.
+     */
+    await folderStore.put(createInboxFolder());
   }
 
   await transaction.done;

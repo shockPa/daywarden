@@ -38,8 +38,22 @@ export interface EntryFieldDefinition {
 
 export interface EntryTypeDefinition {
   id: string;
+
   name: string;
+
+  /*
+   * References an icon bundled
+   * with Daywarden.
+   *
+   * Example:
+   * "running"
+   * "dumbbell"
+   * "moon"
+   */
+  iconId?: string;
+
   builtIn: boolean;
+
   archived?: boolean;
 
   fields: EntryFieldDefinition[];
