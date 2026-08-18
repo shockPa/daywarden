@@ -6,6 +6,7 @@ import type {
   EntryFieldValue,
   EntryTypeDefinition,
   TimeRangeValue,
+  TimerValue,
 } from "../types/entryType";
 
 export interface FieldSummary {
@@ -19,6 +20,18 @@ export interface EntryTypeSummary {
   entryTypeName: string;
   entryCount: number;
   fields: FieldSummary[];
+}
+
+function timerToMinutes(value: TimerValue): number {
+  const start = new Date(value.startedAt).getTime();
+
+  const end = new Date(value.endedAt).getTime();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+    return 0;
+  }
+
+  return Math.round((end - start) / 60_000);
 }
 
 export function durationToMinutes(duration: DurationValue): number {
@@ -195,6 +208,28 @@ function summarizeField(
       return {
         fieldId: field.id,
         fieldName: field.name,
+        displayValue: formatMinutes(totalMinutes),
+      };
+    }
+    case "duration-from-timer": {
+      const totalMinutes = values.reduce<number>((total, value) => {
+        if (
+          typeof value !== "object" ||
+          value === null ||
+          !("startedAt" in value) ||
+          !("endedAt" in value)
+        ) {
+          return total;
+        }
+
+        return total + timerToMinutes(value as TimerValue);
+      }, 0);
+
+      return {
+        fieldId: field.id,
+
+        fieldName: field.name,
+
         displayValue: formatMinutes(totalMinutes),
       };
     }

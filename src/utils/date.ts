@@ -85,3 +85,26 @@ export function getMonthWeeks(year: number, month: number): Date[][] {
 
   return weeks;
 }
+
+export function getLocalTimeValue(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+
+  const hours = String(date.getHours()).padStart(2, "0");
+
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
+
+export function combineLocalDateAndTime(
+  dateKey: string,
+  timeValue: string,
+): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  const [hours, minutes] = timeValue.split(":").map(Number);
+
+  const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+  return date.toISOString();
+}

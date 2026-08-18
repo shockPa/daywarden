@@ -6,6 +6,7 @@ import type {
   EntryFieldValue,
   EntryTypeDefinition,
   TimeRangeValue,
+  TimerValue,
 } from "../types/entryType";
 
 interface EntryCardProps {
@@ -34,6 +35,47 @@ function formatDuration(duration: DurationValue): string {
   }
 
   return parts.join(" ");
+}
+
+function formatTimerTime(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function isTimerValue(value: unknown): value is TimerValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "startedAt" in value &&
+    "endedAt" in value &&
+    typeof value.startedAt === "string" &&
+    typeof value.endedAt === "string"
+  );
+}
+
+function formatTimerDuration(value: TimerValue): string {
+  const start = new Date(value.startedAt).getTime();
+
+  const end = new Date(value.endedAt).getTime();
+
+  const totalMinutes = Math.max(0, Math.round((end - start) / 60_000));
+
+  const hours = Math.floor(totalMinutes / 60);
+
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ` + `${minutes} min`;
 }
 
 function calculateTimeRangeDuration(timeRange: TimeRangeValue): string | null {
@@ -129,6 +171,26 @@ function renderValue(
             {timeRange.end || "?"}
 
             {duration && ` · ${duration}`}
+          </strong>
+        </div>
+      );
+    }
+
+    case "timer": {
+      if (!isTimerValue(value)) {
+        return null;
+      }
+
+      return (
+        <div className="entry-value">
+          <span>{field.name}</span>
+
+          <strong>
+            {formatTimerTime(value.startedAt)}
+            {" – "}
+            {formatTimerTime(value.endedAt)}
+            {" · "}
+            {formatTimerDuration(value)}
           </strong>
         </div>
       );

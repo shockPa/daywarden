@@ -52,7 +52,35 @@ import {
 
 import type { ThemeMode } from "./types/settings";
 
-type ViewMode = "today" | "calendar" | "log" | "search";
+import {
+  combineLocalDateAndTime,
+  getLocalDateKey,
+  getLocalTimeValue,
+} from "./utils/date";
+
+import ActiveTimersPanel from "./components/ActiveTimersPanel";
+
+import {
+  finishActiveTimer,
+  getActiveTimers,
+  startActiveTimer,
+} from "./data/activeTimerStorage";
+
+import type { ActiveTimer } from "./types/timer";
+
+import type { TimerValue } from "./types/entryType";
+
+import LibraryView from "./components/LibraryView";
+
+import LibraryQuickCapture, {
+  type LibraryCaptureMode,
+} from "./components/LibraryQuickCapture";
+
+import ModalSheet from "./components/ModalSheet";
+
+import { createId } from "./utils/id";
+
+type ViewMode = "today" | "calendar" | "log" | "library";
 
 function orderEntryTypes(
   entryTypes: EntryTypeDefinition[],
@@ -91,6 +119,50 @@ function App() {
     hiddenIds: [],
   });
 
+  const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
+
+  async function handleStopTimer(timer: ActiveTimer) {
+    const endedAt = new Date().toISOString();
+
+    const timerValue: TimerValue = {
+      startedAt: timer.startedAt,
+
+      endedAt,
+    };
+
+    const entry: DaywardenEntry = {
+      id: createId(),
+
+      entryTypeId: timer.entryTypeId,
+
+      entryTypeName: timer.entryTypeName,
+
+      /*
+       * The activity belongs to the
+       * date/time when it started.
+       */
+      createdAt: timer.startedAt,
+
+      values: {
+        [timer.fieldId]: timerValue,
+      },
+    };
+
+    const result = await finishActiveTimer(timer.id, entry);
+
+    setEntries(result.entries);
+
+    setActiveTimers(result.activeTimers);
+  }
+
+  async function handleStopAllTimers() {
+    const timersToStop = [...activeTimers];
+
+    for (const timer of timersToStop) {
+      await handleStopTimer(timer);
+    }
+  }
+
   const [activeView, setActiveView] = useState<ViewMode>("today");
 
   function handleNavigate(view: ViewMode) {
@@ -99,7 +171,10 @@ function App() {
     setManagingEntryTypes(false);
     setCreatingEntryType(false);
     setEditingEntry(null);
+    setEditingDate("");
+    setEditingTime("");
     setSelectedEntryType(null);
+    setLibraryCaptureMode(null);
   }
 
   const [entries, setEntries] = useState<DaywardenEntry[]>([]);
@@ -155,13 +230,17 @@ function App() {
         savedEntries,
         savedThemeMode,
         savedLastUpdateCheck,
+        savedActiveTimers,
       ] = await Promise.all([
         getCustomEntryTypes(),
         getEntryTypePreferences(),
         getEntries(),
         getThemeMode(),
         getLastUpdateCheck(),
+        getActiveTimers(),
       ]);
+
+      setActiveTimers(savedActiveTimers);
 
       setCustomEntryTypes(savedCustomEntryTypes);
 
@@ -194,6 +273,9 @@ function App() {
         setOfflineCapable(false);
       });
   }, []);
+
+  const [libraryCaptureMode, setLibraryCaptureMode] =
+    useState<LibraryCaptureMode>(null);
 
   async function handleThemeChange(mode: ThemeMode) {
     setThemeMode(mode);
@@ -252,6 +334,10 @@ function App() {
 
   const [editingEntry, setEditingEntry] = useState<DaywardenEntry | null>(null);
 
+  const [editingDate, setEditingDate] = useState("");
+
+  const [editingTime, setEditingTime] = useState("");
+
   const allEntryTypeDefinitions = [...builtInEntryTypes, ...customEntryTypes];
 
   const activeCustomEntryTypes = customEntryTypes.filter(
@@ -279,9 +365,59 @@ function App() {
     month: "long",
   }).format(new Date());
 
-  function handleSelectEntryType(entryType: EntryTypeDefinition) {
+  async function handleSelectEntryType(entryType: EntryTypeDefinition) {
+    const timerField = entryType.fields.find((field) => field.type === "timer");
+
+    setLibraryCaptureMode(null);
+
+    /*
+     * Timer Entry Types behave
+     * differently:
+     *
+     * tapping the main button starts
+     * them immediately.
+     */
+    if (timerField) {
+      const alreadyRunning = activeTimers.some(
+        (timer) => timer.entryTypeId === entryType.id,
+      );
+
+      if (alreadyRunning) {
+        return;
+      }
+
+      const timer: ActiveTimer = {
+        id: createId(),
+
+        entryTypeId: entryType.id,
+
+        entryTypeName: entryType.name,
+
+        fieldId: timerField.id,
+
+        startedAt: new Date().toISOString(),
+      };
+
+      const updatedTimers = await startActiveTimer(timer);
+
+      setActiveTimers(updatedTimers);
+
+      setCreatingEntryType(false);
+
+      setEditingEntry(null);
+
+      setSelectedEntryType(null);
+
+      return;
+    }
+
+    /*
+     * Normal Entry Type behavior.
+     */
     setCreatingEntryType(false);
+
     setManagingEntryTypes(false);
+
     setEditingEntry(null);
 
     setSelectedEntryType(entryType);
@@ -292,6 +428,7 @@ function App() {
     setManagingEntryTypes(false);
     setEditingEntry(null);
     setCreatingEntryType(true);
+    setLibraryCaptureMode(null);
   }
 
   async function handleSaveEntryType(entryType: EntryTypeDefinition) {
@@ -315,7 +452,21 @@ function App() {
 
     setCreatingEntryType(false);
 
-    setSelectedEntryType(entryType);
+    const hasTimer = entryType.fields.some((field) => field.type === "timer");
+
+    if (hasTimer) {
+      /*
+       * Timer Entry Types should not
+       * open a form immediately after
+       * being created.
+       *
+       * The user starts the timer by
+       * tapping its Today button.
+       */
+      setSelectedEntryType(null);
+    } else {
+      setSelectedEntryType(entryType);
+    }
   }
 
   async function handleSaveEntry(values: EntryValues) {
@@ -331,6 +482,8 @@ function App() {
 
         entryTypeName: selectedEntryType.name,
 
+        createdAt: combineLocalDateAndTime(editingDate, editingTime),
+
         values,
       };
 
@@ -339,7 +492,7 @@ function App() {
       setEntries(updatedEntries);
     } else {
       const entry: DaywardenEntry = {
-        id: crypto.randomUUID(),
+        id: createId(),
 
         entryTypeId: selectedEntryType.id,
 
@@ -356,6 +509,10 @@ function App() {
     }
 
     setEditingEntry(null);
+
+    setEditingDate("");
+    setEditingTime("");
+
     setSelectedEntryType(null);
   }
 
@@ -374,7 +531,13 @@ function App() {
 
     setEditingEntry(entry);
 
+    setEditingDate(getLocalDateKey(entry.createdAt));
+
+    setEditingTime(getLocalTimeValue(entry.createdAt));
+
     setSelectedEntryType(entryType);
+
+    setLibraryCaptureMode(null);
 
     window.scrollTo({
       top: 0,
@@ -525,7 +688,7 @@ function App() {
 
           {activeView === "calendar" && "Calendar"}
 
-          {activeView === "search" && "Search"}
+          {activeView === "library" && "Library"}
         </h1>
       </header>
 
@@ -564,10 +727,35 @@ function App() {
         <>
           {activeView === "today" && (
             <>
+              <ActiveTimersPanel
+                timers={activeTimers}
+                onStop={handleStopTimer}
+                onStopAll={handleStopAllTimers}
+              />
               <EntryTypePicker
                 entryTypes={visibleEntryTypes}
                 selectedEntryTypeId={selectedEntryType?.id ?? null}
+                activeTimerEntryTypeIds={activeTimers.map(
+                  (timer) => timer.entryTypeId,
+                )}
                 onSelect={handleSelectEntryType}
+              />
+
+              <LibraryQuickCapture
+                mode={libraryCaptureMode}
+                onOpen={(mode) => {
+                  setCreatingEntryType(false);
+
+                  setEditingEntry(null);
+
+                  setEditingDate("");
+                  setEditingTime("");
+
+                  setSelectedEntryType(null);
+
+                  setLibraryCaptureMode(mode);
+                }}
+                onClose={() => setLibraryCaptureMode(null)}
               />
 
               <button
@@ -579,25 +767,63 @@ function App() {
               </button>
 
               {creatingEntryType && (
-                <CreateEntryTypeForm
-                  onSave={handleSaveEntryType}
-                  onCancel={() => setCreatingEntryType(false)}
-                />
+                <ModalSheet
+                  open={creatingEntryType}
+                  ariaLabel="Create entry type"
+                  onClose={() => setCreatingEntryType(false)}
+                >
+                  {creatingEntryType && (
+                    <CreateEntryTypeForm
+                      onSave={handleSaveEntryType}
+                      onCancel={() => setCreatingEntryType(false)}
+                    />
+                  )}
+                </ModalSheet>
               )}
 
               {selectedEntryType && (
-                <DynamicEntryForm
-                  key={editingEntry?.id ?? selectedEntryType.id}
-                  entryType={selectedEntryType}
-                  initialValues={editingEntry?.values}
-                  submitLabel={editingEntry ? "Save changes" : "Save entry"}
-                  onSave={handleSaveEntry}
+                <ModalSheet
+                  open={selectedEntryType !== null}
+                  ariaLabel={
+                    editingEntry
+                      ? `Edit ${selectedEntryType?.name ?? "entry"}`
+                      : `New ${selectedEntryType?.name ?? "entry"}`
+                  }
                   onClose={() => {
                     setEditingEntry(null);
 
+                    setEditingDate("");
+                    setEditingTime("");
+
                     setSelectedEntryType(null);
                   }}
-                />
+                >
+                  {selectedEntryType && (
+                    <DynamicEntryForm
+                      key={editingEntry?.id ?? selectedEntryType.id}
+                      entryType={selectedEntryType}
+                      initialValues={editingEntry?.values}
+                      submitLabel={editingEntry ? "Save changes" : "Save entry"}
+                      entryDate={editingEntry ? editingDate : undefined}
+                      entryTime={editingEntry ? editingTime : undefined}
+                      onEntryDateChange={
+                        editingEntry ? setEditingDate : undefined
+                      }
+                      onEntryTimeChange={
+                        editingEntry ? setEditingTime : undefined
+                      }
+                      onSave={handleSaveEntry}
+                      onClose={() => {
+                        setEditingEntry(null);
+
+                        setEditingDate("");
+                        setEditingTime("");
+
+                        setSelectedEntryType(null);
+                      }}
+                    />
+                  )}
+                </ModalSheet>
               )}
 
               <TodayEntries
@@ -627,11 +853,7 @@ function App() {
             />
           )}
 
-          {activeView === "search" && (
-            <section className="placeholder-page">
-              <p>Search is coming later.</p>
-            </section>
-          )}
+          {activeView === "library" && <LibraryView />}
         </>
       )}
 
@@ -662,11 +884,15 @@ function App() {
           </button>
 
           <button
-            className={activeView === "search" ? "nav-active" : ""}
+            className={
+              activeView === "library"
+                ? "nav-active library-nav-button"
+                : "library-nav-button"
+            }
             type="button"
-            onClick={() => handleNavigate("search")}
+            onClick={() => handleNavigate("library")}
           >
-            Search
+            Library
           </button>
         </nav>
       )}

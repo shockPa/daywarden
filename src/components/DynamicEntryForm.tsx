@@ -16,6 +16,13 @@ interface DynamicEntryFormProps {
 
   submitLabel?: string;
 
+  entryDate?: string;
+  entryTime?: string;
+
+  onEntryDateChange?: (value: string) => void;
+
+  onEntryTimeChange?: (value: string) => void;
+
   onSave: (values: EntryValues) => Promise<void> | void;
 
   onClose: () => void;
@@ -64,6 +71,10 @@ function DynamicEntryForm({
   entryType,
   initialValues,
   submitLabel = "Save entry",
+  entryDate,
+  entryTime,
+  onEntryDateChange,
+  onEntryTimeChange,
   onSave,
   onClose,
 }: DynamicEntryFormProps) {
@@ -291,6 +302,33 @@ function DynamicEntryForm({
           ×
         </button>
       </div>
+
+      {entryDate !== undefined &&
+        entryTime !== undefined &&
+        onEntryDateChange &&
+        onEntryTimeChange && (
+          <div className="entry-datetime">
+            <label>
+              Date
+              <input
+                type="date"
+                value={entryDate}
+                onChange={(event) => onEntryDateChange(event.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              Time
+              <input
+                type="time"
+                value={entryTime}
+                onChange={(event) => onEntryTimeChange(event.target.value)}
+                required
+              />
+            </label>
+          </div>
+        )}
 
       <div className="entry-fields">
         {entryType.fields.map((field) => (

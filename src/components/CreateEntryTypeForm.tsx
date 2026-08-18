@@ -8,6 +8,8 @@ import type {
   SummaryMode,
 } from "../types/entryType";
 
+import { createId } from "../utils/id";
+
 interface CreateEntryTypeFormProps {
   onSave: (entryType: EntryTypeDefinition) => Promise<void> | void;
 
@@ -55,6 +57,10 @@ const fieldTypeOptions: FieldTypeOption[] = [
     label: "Duration",
   },
   {
+    type: "timer",
+    label: "Timer",
+  },
+  {
     type: "checkbox",
     label: "Yes / No",
   },
@@ -81,6 +87,9 @@ function getDefaultSummaryMode(type: EntryFieldType): SummaryMode {
     case "checkbox":
       return "count";
 
+    case "timer":
+      return "duration-from-timer";
+
     case "text":
     case "time":
     case "list":
@@ -95,7 +104,7 @@ function canSummarize(type: EntryFieldType): boolean {
 
 function createDraftField(): DraftField {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     name: "",
     type: "text",
 
@@ -163,6 +172,16 @@ function CreateEntryTypeForm({ onSave, onCancel }: CreateEntryTypeFormProps) {
       return;
     }
 
+    const timerFieldCount = fields.filter(
+      (field) => field.type === "timer",
+    ).length;
+
+    if (timerFieldCount > 1) {
+      setError("An entry type can only have one Timer field.");
+
+      return;
+    }
+
     const normalizedNames = fields.map((field) =>
       field.name.trim().toLowerCase(),
     );
@@ -207,7 +226,7 @@ function CreateEntryTypeForm({ onSave, onCancel }: CreateEntryTypeFormProps) {
     });
 
     const entryType: EntryTypeDefinition = {
-      id: `custom-${crypto.randomUUID()}`,
+      id: `custom-${createId()}`,
       name: trimmedName,
       builtIn: false,
       fields: fieldDefinitions,
@@ -247,7 +266,6 @@ function CreateEntryTypeForm({ onSave, onCancel }: CreateEntryTypeFormProps) {
           type="text"
           value={name}
           placeholder="Ultimate Workout"
-          autoFocus
           onChange={(event) => {
             setName(event.target.value);
             setError("");

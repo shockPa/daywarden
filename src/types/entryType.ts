@@ -5,6 +5,7 @@ export type EntryFieldType =
   | "time"
   | "time-range"
   | "duration"
+  | "timer"
   | "checkbox"
   | "list";
 
@@ -13,7 +14,8 @@ export type SummaryMode =
   | "sum"
   | "average"
   | "count"
-  | "duration-from-range";
+  | "duration-from-range"
+  | "duration-from-timer";
 
 export type ColorDirection = "higher-is-better" | "higher-is-worse" | "neutral";
 
@@ -69,13 +71,19 @@ export interface DurationValue {
   minutes: number;
 }
 
+export interface TimerValue {
+  startedAt: string;
+  endedAt: string;
+}
+
 export type EntryFieldValue =
   | string
   | number
   | boolean
   | string[]
   | TimeRangeValue
-  | DurationValue;
+  | DurationValue
+  | TimerValue;
 
 export type EntryValues = Record<string, EntryFieldValue>;
 
