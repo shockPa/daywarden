@@ -1,4 +1,9 @@
-import { useEffect, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 
 import { createPortal } from "react-dom";
 
@@ -21,53 +26,64 @@ function ModalSheet({
   tone = "default",
   ariaLabel,
 }: ModalSheetProps) {
+  const dialogRef =
+    useRef<HTMLDialogElement | null>(null);
+
   useEffect(() => {
-    if (!open) {
+    const dialog = dialogRef.current;
+
+    if (!dialog) {
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
-
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
+    if (open && !dialog.open) {
+      dialog.showModal();
     }
 
-    window.addEventListener("keydown", handleKeyDown);
+    if (!open && dialog.open) {
+      dialog.close();
+    }
 
     return () => {
-      document.body.style.overflow = previousOverflow;
-
-      window.removeEventListener("keydown", handleKeyDown);
+      if (dialog.open) {
+        dialog.close();
+      }
     };
-  }, [open, onClose]);
+  }, [open]);
 
-  if (!open) {
-    return null;
+  function handleBackdropMouseDown(
+    event: MouseEvent<HTMLDialogElement>,
+  ) {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
   }
 
   return createPortal(
-    <div
+    <dialog
+      ref={dialogRef}
       className="modal-sheet-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
+      aria-label={ariaLabel}
+      onCancel={(event) => {
+        /*
+         * Keep React as the source of truth
+         * for whether the modal is open.
+         */
+        event.preventDefault();
+
+        onClose();
       }}
+      onMouseDown={handleBackdropMouseDown}
     >
       <section
         className={[
           "modal-sheet",
-          tone === "library" ? "modal-sheet-library" : "",
+          tone === "library"
+            ? "modal-sheet-library"
+            : "",
         ]
           .filter(Boolean)
           .join(" ")}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
       >
         <button
           type="button"
@@ -78,9 +94,11 @@ function ModalSheet({
           ×
         </button>
 
-        <div className="modal-sheet-body">{children}</div>
+        <div className="modal-sheet-body">
+          {children}
+        </div>
       </section>
-    </div>,
+    </dialog>,
     document.body,
   );
 }

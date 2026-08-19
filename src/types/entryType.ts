@@ -2,6 +2,7 @@ export type EntryFieldType =
   | "text"
   | "number"
   | "scale"
+  | "faces"
   | "time"
   | "time-range"
   | "duration"
@@ -36,6 +37,8 @@ export interface EntryFieldDefinition {
   summaryMode?: SummaryMode;
 
   colorDirection?: ColorDirection;
+
+  showInCalendar?: boolean;
 }
 
 export interface EntryTypeDefinition {

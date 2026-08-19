@@ -1,64 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="440" height="520" viewBox="0 0 290 330" role="img" aria-labelledby="title desc">
-  <title id="title">Daywarden logo mark</title>
-  <desc id="desc">A deep navy D-shaped daily logbook with a softly curved white page, five colored day-status dots, and three note lines.</desc>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="780" height="888" viewBox="0 0 195 222"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Daywarden dark icon</title>
+  <desc id="desc">Deep navy rounded icon with the Daywarden D-shaped page mark, five red-to-green status dots, and three gray note lines.</desc>
 
   <defs>
-    <linearGradient id="coral" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FF7367"/>
-      <stop offset="1" stop-color="#F04F49"/>
-    </linearGradient>
-    <linearGradient id="apricot" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFAA4C"/>
-      <stop offset="1" stop-color="#F5912E"/>
-    </linearGradient>
-    <linearGradient id="yellow" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFDD5A"/>
-      <stop offset="1" stop-color="#F4C832"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#A8D686"/>
-      <stop offset="1" stop-color="#8FC869"/>
-    </linearGradient>
-    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#42C27B"/>
-      <stop offset="1" stop-color="#22A960"/>
-    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5"
+                    flood-color="#071326" flood-opacity=".22"/>
+    </filter>
   </defs>
 
-  <!-- The bold D / book cover -->
-  <path
-    d="M72 40H160
-       C228 40 273 95 273 177
-       C273 260 228 314 163 314
-       H72
-       C60 314 53 306 53 295
-       V59
-       C53 48 61 40 72 40Z"
-    fill="#011B40"/>
+  <!-- Dark icon tile -->
+  <rect x="1.5" y="1.5" width="192" height="219"
+        rx="36" ry="36"
+        fill="#011C42"
+        filter="url(#shadow)"/>
 
-  <!-- The page: intentionally organic at the top, like the concept artwork -->
-  <path
-    d="M80 66
-       C105 77 127 81 153 79
-       C205 76 242 116 242 178
-       C242 241 208 284 154 284
-       H84
-       C81 284 79 282 79 279
-       V73
-       C79 69 79 67 80 66Z"
-    fill="#FFFDFC"/>
+  <!-- Daywarden D / page, traced to match the concept -->
+  <path fill="#F7F5F1" fill-rule="evenodd" d="
+    M42 40
+    C39.2 40 37.5 43.5 37.5 47.5
+    L37.5 184.5
+    C37.5 188.5 40.5 191 45 191
+    H104
+    C121 191 137 183 148.5 165
+    C157 151.5 161 134.5 161 114.5
+    C161 94.5 157 79 149 67
+    C140 53.5 127 46 112 42
+    C104 39.8 94 40 84 40
+    Z
 
-  <!-- Day / mood scale -->
-  <circle cx="107" cy="119" r="11.5" fill="url(#coral)"/>
-  <circle cx="107" cy="154" r="11.5" fill="url(#apricot)"/>
-  <circle cx="107" cy="189" r="11.5" fill="url(#yellow)"/>
-  <circle cx="107" cy="224" r="11.5" fill="url(#sage)"/>
-  <circle cx="107" cy="259" r="11.5" fill="url(#green)"/>
+    M51 53
+    C63 58.5 75 60 91 60
+    H101
+    C112 60 124 64 133 72.5
+    C141 80.5 145 92 145 105
+    V126.5
+    C143 143.5 136 156 125 164.5
+    C115 172.5 104 176.5 91 176.5
+    H54
+    C51.5 176.5 49.5 174.5 49.5 171.5
+    V58
+    C49.5 55.5 49.5 54 51 53
+    Z"/>
 
-  <!-- Notes -->
-  <g fill="none" stroke="#C9CACB" stroke-width="6" stroke-linecap="round">
-    <path d="M138 141H210"/>
-    <path d="M138 176H210"/>
-    <path d="M138 211H210"/>
+  <!-- Status dots -->
+  <circle cx="67.2" cy="82.9" r="7.2" fill="#F96859"/>
+  <circle cx="67.2" cy="102.1" r="7.2" fill="#FD9D34"/>
+  <circle cx="67.2" cy="120.8" r="7.2" fill="#FDD93A"/>
+  <circle cx="67.0" cy="139.6" r="7.2" fill="#9ED277"/>
+  <circle cx="67.3" cy="158.8" r="7.2" fill="#34BF6E"/>
+
+  <!-- Note lines -->
+  <g fill="none" stroke="#A2A7B0" stroke-width="3.1" stroke-linecap="round">
+    <path d="M85 99 H126"/>
+    <path d="M85 119 H126"/>
+    <path d="M85 138 H126"/>
   </g>
 </svg>

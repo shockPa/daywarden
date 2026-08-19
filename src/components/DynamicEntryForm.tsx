@@ -9,6 +9,8 @@ import type {
   TimeRangeValue,
 } from "../types/entryType";
 
+import { FACE_OPTIONS, normalizeFaceRating } from "../utils/faces";
+
 interface DynamicEntryFormProps {
   entryType: EntryTypeDefinition;
 
@@ -32,6 +34,9 @@ function getInitialValue(field: EntryFieldDefinition): EntryFieldValue {
   switch (field.type) {
     case "scale":
       return field.min ?? 0;
+
+    case "faces":
+      return 3;
 
     case "number":
       return 0;
@@ -154,6 +159,36 @@ function DynamicEntryForm({
               <span>{field.min ?? 0}</span>
               <span>{field.max ?? 100}</span>
             </div>
+          </div>
+        );
+      }
+
+      case "faces": {
+        const selectedValue = normalizeFaceRating(value);
+
+        return (
+          <div className="faces-field" role="group" aria-label={field.name}>
+            {FACE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={
+                  selectedValue === option.value
+                    ? "face-choice selected"
+                    : "face-choice"
+                }
+                aria-pressed={selectedValue === option.value}
+                aria-label={option.label}
+                title={option.label}
+                onClick={() => updateValue(field.id, option.value)}
+              >
+                <span className="face-choice-icon" aria-hidden="true">
+                  {option.face}
+                </span>
+
+                <span className="face-choice-label">{option.label}</span>
+              </button>
+            ))}
           </div>
         );
       }

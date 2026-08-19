@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ReactNode } from "react";
 
@@ -7,7 +7,21 @@ import PeriodSummary from "./PeriodSummary";
 
 import type { DaywardenEntry } from "../types/entry";
 
-import type { EntryTypeDefinition } from "../types/entryType";
+import type {
+  ColorDirection,
+  DurationValue,
+  EntryFieldDefinition,
+  EntryTypeDefinition,
+  TimeRangeValue,
+  TimerValue,
+} from "../types/entryType";
+
+import { getFaceOption } from "../utils/faces";
+
+import {
+  getCalendarLensEntryTypeId,
+  saveCalendarLensEntryTypeId,
+} from "../data/settingsStorage";
 
 import {
   getISOWeekNumber,
@@ -40,7 +54,7 @@ interface LongPressButtonProps {
   onLongPress: () => void;
 }
 
-type SelectionKind = "day" | "week" | "multi";
+type SelectionKind = "day" | "week" | "month" | "multi";
 
 const LONG_PRESS_MS = 550;
 
@@ -125,6 +139,485 @@ function formatShortDate(dateKey: string): string {
   }).format(parseLocalDateKey(dateKey));
 }
 
+
+type LensMetric =
+  | {
+      kind: "scale";
+      fieldId: string;
+      label: string;
+      value: number;
+      colorDirection: ColorDirection;
+    }
+  | {
+      kind: "face";
+      fieldId: string;
+      label: string;
+      face: string;
+      faceLabel: string;
+    }
+  | {
+      kind: "text";
+      fieldId: string;
+      label: string;
+      value: string;
+    };
+
+interface CalendarLensVisualizationProps {
+  entryType: EntryTypeDefinition;
+  entries: DaywardenEntry[];
+  compact?: boolean;
+}
+
+function isDurationValue(value: unknown): value is DurationValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "hours" in value &&
+    "minutes" in value &&
+    typeof value.hours === "number" &&
+    typeof value.minutes === "number"
+  );
+}
+
+function isTimeRangeValue(value: unknown): value is TimeRangeValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "start" in value &&
+    "end" in value &&
+    typeof value.start === "string" &&
+    typeof value.end === "string"
+  );
+}
+
+function isTimerValue(value: unknown): value is TimerValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "startedAt" in value &&
+    "endedAt" in value &&
+    typeof value.startedAt === "string" &&
+    typeof value.endedAt === "string"
+  );
+}
+
+function durationToMinutes(value: DurationValue): number {
+  return Math.max(0, value.hours * 60 + value.minutes);
+}
+
+function timeRangeToMinutes(value: TimeRangeValue): number {
+  if (!value.start || !value.end) {
+    return 0;
+  }
+
+  const [startHour, startMinute] = value.start.split(":").map(Number);
+  const [endHour, endMinute] = value.end.split(":").map(Number);
+
+  if (
+    !Number.isFinite(startHour) ||
+    !Number.isFinite(startMinute) ||
+    !Number.isFinite(endHour) ||
+    !Number.isFinite(endMinute)
+  ) {
+    return 0;
+  }
+
+  const start = startHour * 60 + startMinute;
+
+  let end = endHour * 60 + endMinute;
+
+  if (end < start) {
+    end += 24 * 60;
+  }
+
+  return Math.max(0, end - start);
+}
+
+function timerToMinutes(value: TimerValue): number {
+  const start = new Date(value.startedAt).getTime();
+  const end = new Date(value.endedAt).getTime();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.round((end - start) / 60_000));
+}
+
+function formatMinutes(totalMinutes: number): string {
+  const roundedMinutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(roundedMinutes / 60);
+  const minutes = roundedMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} ${hours === 1 ? "hr" : "hrs"}`;
+  }
+
+  return `${hours} ${hours === 1 ? "hr" : "hrs"} ${minutes} min`;
+}
+
+function summarizeNumbers(
+  values: number[],
+  field: EntryFieldDefinition,
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  switch (field.summaryMode) {
+    case "sum":
+      return values.reduce((sum, value) => sum + value, 0);
+
+    case "count":
+      return values.length;
+
+    case "average":
+    default:
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+}
+
+function getScaleColor(
+  value: number,
+  colorDirection: ColorDirection,
+): string {
+  if (colorDirection === "neutral") {
+    return "hsl(210 8% 55%)";
+  }
+
+  const clamped = Math.min(100, Math.max(0, value));
+
+  const meaningValue =
+    colorDirection === "higher-is-worse"
+      ? 100 - clamped
+      : clamped;
+
+  /*
+   * 0   -> red
+   * 50  -> yellow
+   * 100 -> green
+   */
+  const hue = meaningValue * 1.2;
+
+  return `hsl(${hue} 72% 46%)`;
+}
+
+function supportsCalendarLensField(field: EntryFieldDefinition): boolean {
+  if (field.type === "scale" || field.type === "faces") {
+    /*
+     * Existing Scale fields pre-date showInCalendar.
+     * Treat undefined as visible for backward compatibility.
+     */
+    return field.showInCalendar !== false;
+  }
+
+  if (
+    field.type === "duration" ||
+    field.type === "timer" ||
+    field.type === "time-range" ||
+    field.type === "number" ||
+    field.type === "checkbox"
+  ) {
+    return field.includeInSummary === true;
+  }
+
+  return false;
+}
+
+function isCalendarLensEntryType(entryType: EntryTypeDefinition): boolean {
+  return (
+    !entryType.archived &&
+    entryType.fields.some(supportsCalendarLensField)
+  );
+}
+
+function buildLensMetrics(
+  entryType: EntryTypeDefinition,
+  entries: DaywardenEntry[],
+): LensMetric[] {
+  const metrics: LensMetric[] = [];
+
+  for (const field of entryType.fields) {
+    if (!supportsCalendarLensField(field)) {
+      continue;
+    }
+
+    const values = entries
+      .map((entry) => entry.values[field.id])
+      .filter((value) => value !== undefined);
+
+    switch (field.type) {
+      case "scale": {
+        const numericValues = values
+          .map(Number)
+          .filter(Number.isFinite);
+
+        const summary = summarizeNumbers(numericValues, field);
+
+        if (summary === null) {
+          break;
+        }
+
+        metrics.push({
+          kind: "scale",
+          fieldId: field.id,
+          label: field.name,
+          value: Math.min(100, Math.max(0, summary)),
+          colorDirection: field.colorDirection ?? "neutral",
+        });
+
+        break;
+      }
+
+      case "faces": {
+        const numericValues = values
+          .map(Number)
+          .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5);
+
+        const summary = summarizeNumbers(numericValues, field);
+
+        if (summary === null) {
+          break;
+        }
+
+        const face = getFaceOption(summary);
+
+        metrics.push({
+          kind: "face",
+          fieldId: field.id,
+          label: field.name,
+          face: face.face,
+          faceLabel: face.label,
+        });
+
+        break;
+      }
+
+      case "duration": {
+        const totalMinutes = values.reduce<number>(
+          (sum, value) =>
+            isDurationValue(value)
+              ? sum + durationToMinutes(value)
+              : sum,
+          0,
+        );
+
+        metrics.push({
+          kind: "text",
+          fieldId: field.id,
+          label: field.name,
+          value: formatMinutes(totalMinutes),
+        });
+
+        break;
+      }
+
+      case "timer": {
+        const totalMinutes = values.reduce<number>(
+          (sum, value) =>
+            isTimerValue(value)
+              ? sum + timerToMinutes(value)
+              : sum,
+          0,
+        );
+
+        metrics.push({
+          kind: "text",
+          fieldId: field.id,
+          label: field.name,
+          value: formatMinutes(totalMinutes),
+        });
+
+        break;
+      }
+
+      case "time-range": {
+        const totalMinutes = values.reduce<number>(
+          (sum, value) =>
+            isTimeRangeValue(value)
+              ? sum + timeRangeToMinutes(value)
+              : sum,
+          0,
+        );
+
+        metrics.push({
+          kind: "text",
+          fieldId: field.id,
+          label: field.name,
+          value: formatMinutes(totalMinutes),
+        });
+
+        break;
+      }
+
+      case "number": {
+        const numericValues = values
+          .map(Number)
+          .filter(Number.isFinite);
+
+        const summary = summarizeNumbers(numericValues, field);
+
+        if (summary === null) {
+          break;
+        }
+
+        metrics.push({
+          kind: "text",
+          fieldId: field.id,
+          label: field.name,
+          value: new Intl.NumberFormat("en", {
+            maximumFractionDigits: 1,
+          }).format(summary),
+        });
+
+        break;
+      }
+
+      case "checkbox": {
+        const yesCount = values.filter(Boolean).length;
+
+        metrics.push({
+          kind: "text",
+          fieldId: field.id,
+          label: field.name,
+          value: `${yesCount} yes`,
+        });
+
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
+  return metrics;
+}
+
+function CalendarLensVisualization({
+  entryType,
+  entries,
+  compact = false,
+}: CalendarLensVisualizationProps) {
+  if (entries.length === 0) {
+    if (compact) {
+      return null;
+    }
+
+    return (
+      <div className="calendar-day-lens-summary empty">
+        <div className="calendar-day-lens-heading">
+          <span>Lens</span>
+          <strong>{entryType.name}</strong>
+        </div>
+
+        <p>No {entryType.name} recorded during this selection.</p>
+      </div>
+    );
+  }
+
+  const metrics = buildLensMetrics(entryType, entries);
+
+  const visibleMetrics = compact
+    ? metrics.slice(0, 4)
+    : metrics;
+
+  return (
+    <div
+      className={
+        compact
+          ? "calendar-lens-metrics compact"
+          : "calendar-day-lens-summary"
+      }
+    >
+      {!compact && (
+        <div className="calendar-day-lens-heading">
+          <span>Lens</span>
+          <strong>{entryType.name}</strong>
+        </div>
+      )}
+
+      <div className="calendar-lens-metric-list">
+        {visibleMetrics.map((metric) => {
+          if (metric.kind === "scale") {
+            return (
+              <div
+                className="calendar-lens-metric calendar-lens-scale"
+                key={metric.fieldId}
+              >
+                <span className="calendar-lens-metric-label">
+                  {metric.label}
+                </span>
+
+                <div
+                  className="calendar-lens-track"
+                  aria-label={`${metric.label} ${Math.round(metric.value)} out of 100`}
+                >
+                  <span
+                    className="calendar-lens-fill"
+                    style={{
+                      width: `${metric.value}%`,
+                      backgroundColor: getScaleColor(
+                        metric.value,
+                        metric.colorDirection,
+                      ),
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          if (metric.kind === "face") {
+            return (
+              <div
+                className="calendar-lens-metric calendar-lens-face"
+                key={metric.fieldId}
+              >
+                <span className="calendar-lens-metric-label">
+                  {metric.label}
+                </span>
+
+                <span className="calendar-lens-face-value">
+                  <span
+                    className="calendar-lens-face-icon"
+                    aria-hidden="true"
+                  >
+                    {metric.face}
+                  </span>
+
+                  <span className="calendar-lens-face-label">
+                    {metric.faceLabel}
+                  </span>
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              className="calendar-lens-metric calendar-lens-text"
+              key={metric.fieldId}
+            >
+              <span className="calendar-lens-metric-label">
+                {metric.label}
+              </span>
+
+              <strong className="calendar-lens-metric-value">
+                {metric.value}
+              </strong>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CalendarView({
   entries,
   entryTypes,
@@ -154,6 +647,71 @@ function CalendarView({
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const [showAllEntries, setShowAllEntries] = useState(false);
+
+  const lensEntryTypes = useMemo(
+    () => entryTypes.filter(isCalendarLensEntryType),
+    [entryTypes],
+  );
+
+  const [
+    selectedLensEntryTypeId,
+    setSelectedLensEntryTypeId,
+  ] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSavedLens() {
+      const savedEntryTypeId =
+        await getCalendarLensEntryTypeId();
+
+      if (
+        !cancelled &&
+        savedEntryTypeId
+      ) {
+        setSelectedLensEntryTypeId(
+          savedEntryTypeId,
+        );
+      }
+    }
+
+    void loadSavedLens();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const activeLensEntryType =
+    lensEntryTypes.find(
+      (entryType) => entryType.id === selectedLensEntryTypeId,
+    ) ?? lensEntryTypes[0];
+
+  const activeLensEntryTypeId = activeLensEntryType?.id ?? "";
+
+  const lensEntriesByDate = useMemo(() => {
+    const grouped = new Map<string, DaywardenEntry[]>();
+
+    if (!activeLensEntryTypeId) {
+      return grouped;
+    }
+
+    for (const entry of entries) {
+      if (entry.entryTypeId !== activeLensEntryTypeId) {
+        continue;
+      }
+
+      const dateKey = getLocalDateKey(entry.createdAt);
+
+      const current = grouped.get(dateKey) ?? [];
+
+      current.push(entry);
+
+      grouped.set(dateKey, current);
+    }
+
+    return grouped;
+  }, [entries, activeLensEntryTypeId]);
 
   const visibleMonth = parseMonthKey(visibleMonthKey);
 
@@ -188,6 +746,17 @@ function CalendarView({
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
   }, [entries, selectedDates, selectedDateSet]);
+
+  const selectedLensEntries = useMemo(
+    () =>
+      activeLensEntryTypeId
+        ? selectedEntries.filter(
+            (entry) =>
+              entry.entryTypeId === activeLensEntryTypeId,
+          )
+        : [],
+    [selectedEntries, activeLensEntryTypeId],
+  );
 
   const summaries = useMemo(
     () => buildEntryTypeSummaries(selectedEntries, entryTypes),
@@ -280,6 +849,44 @@ function CalendarView({
     });
   }
 
+  function getVisibleMonthDateKeys(): string[] {
+    const daysInMonth = new Date(
+      year,
+      month + 1,
+      0,
+      12,
+    ).getDate();
+
+    return Array.from(
+      { length: daysInMonth },
+      (_, index) =>
+        getLocalDateKey(
+          new Date(
+            year,
+            month,
+            index + 1,
+            12,
+          ),
+        ),
+    );
+  }
+
+  function openMonth() {
+    if (multiSelect) {
+      return;
+    }
+
+    setSelectedDates(
+      getVisibleMonthDateKeys(),
+    );
+
+    setSelectionKind("month");
+
+    setShowAllEntries(false);
+
+    setSheetOpen(true);
+  }
+
   function clearSelection() {
     setSelectedDates([]);
     setMultiSelect(false);
@@ -364,6 +971,23 @@ function CalendarView({
     )}`;
   }
 
+  if (selectionKind === "month") {
+    sheetTitle = new Intl.DateTimeFormat("en", {
+      month: "long",
+      year: "numeric",
+    }).format(visibleMonth);
+
+    if (sortedSelectedDates.length > 0) {
+      sheetSubtitle = `${formatShortDate(
+        sortedSelectedDates[0],
+      )} – ${formatShortDate(
+        sortedSelectedDates[
+          sortedSelectedDates.length - 1
+        ],
+      )}`;
+    }
+  }
+
   if (selectionKind === "multi") {
     sheetTitle = `${selectedDates.length} ${
       selectedDates.length === 1 ? "day" : "days"
@@ -395,12 +1019,18 @@ function CalendarView({
         </button>
 
         <div className="calendar-month-title">
-          <strong>
+          <button
+            type="button"
+            className="calendar-month-review-button"
+            onClick={openMonth}
+            disabled={multiSelect}
+            title="Review this month"
+          >
             {new Intl.DateTimeFormat("en", {
               month: "long",
               year: "numeric",
             }).format(visibleMonth)}
-          </strong>
+          </button>
 
           {visibleMonthKey !== currentMonthKey && (
             <button
@@ -421,6 +1051,51 @@ function CalendarView({
         >
           ›
         </button>
+      </div>
+
+      <div className="calendar-lens-control">
+        <label htmlFor="calendar-lens-select">
+          <span>Lens</span>
+
+          <select
+            id="calendar-lens-select"
+            value={activeLensEntryTypeId}
+            disabled={lensEntryTypes.length === 0}
+            onChange={(event) => {
+              const entryTypeId =
+                event.target.value;
+
+              setSelectedLensEntryTypeId(
+                entryTypeId,
+              );
+
+              clearSelection();
+
+              void saveCalendarLensEntryTypeId(
+                entryTypeId,
+              );
+            }}
+          >
+            {lensEntryTypes.length === 0 ? (
+              <option value="">
+                No calendar-ready activities
+              </option>
+            ) : (
+              lensEntryTypes.map((entryType) => (
+                <option
+                  key={entryType.id}
+                  value={entryType.id}
+                >
+                  {entryType.name}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
+
+        <p>
+          Each day summarizes the selected activity.
+        </p>
       </div>
 
       {multiSelect && (
@@ -451,7 +1126,7 @@ function CalendarView({
       )}
 
       <div className="calendar-help">
-        Tap a day or week to inspect it. Long-press to select several.
+        Tap a day, week, or month to review it. Long-press to select several days.
       </div>
 
       <section className="calendar-month">
@@ -523,7 +1198,17 @@ function CalendarView({
                       onTap={() => openDay(day)}
                       onLongPress={() => longPressDay(day)}
                     >
-                      {day.getDate()}
+                      <span className="calendar-day-number">
+                        {day.getDate()}
+                      </span>
+
+                      {isCurrentMonth && activeLensEntryType && (
+                        <CalendarLensVisualization
+                          entryType={activeLensEntryType}
+                          entries={lensEntriesByDate.get(dateKey) ?? []}
+                          compact
+                        />
+                      )}
                     </LongPressButton>
                   );
                 })}
@@ -575,6 +1260,14 @@ function CalendarView({
                 </button>
               </div>
             </div>
+
+            {selectedDates.length > 0 &&
+              activeLensEntryType && (
+                <CalendarLensVisualization
+                  entryType={activeLensEntryType}
+                  entries={selectedLensEntries}
+                />
+              )}
 
             {selectedEntries.length === 0 && (
               <p className="sheet-empty-state">

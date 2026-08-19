@@ -2146,41 +2146,53 @@ body,
   }
 }
 
-/* Responsive modal / bottom sheet */
+/* Native dialog ModalSheet replacement
+   Replace the existing "Responsive modal / bottom sheet" CSS block
+   with this block. */
 
 .modal-sheet-backdrop {
-  position: fixed;
-  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
 
-  z-index: 1000;
+  margin: 0;
+  padding: 24px;
 
+  border: 0;
+
+  background: transparent;
+  color: var(--dw-text);
+
+  overflow: hidden;
+}
+
+.modal-sheet-backdrop[open] {
   display: flex;
 
   align-items: center;
   justify-content: center;
+}
 
-  padding: 24px;
-
+.modal-sheet-backdrop::backdrop {
   background: rgba(0, 0, 0, 0.42);
-
-  backdrop-filter: blur(2px);
 }
 
 .modal-sheet {
   position: relative;
 
   width: min(620px, 100%);
+  max-height: min(86dvh, 820px);
 
-  max-height: min(86vh, 820px);
-
+  overflow-x: hidden;
   overflow-y: auto;
 
-  border: 1px solid var(--dw-border);
+  overscroll-behavior: contain;
 
+  border: 1px solid var(--dw-border);
   border-radius: 20px;
 
   background: var(--dw-background);
-
   color: var(--dw-text);
 
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
@@ -2212,11 +2224,9 @@ body,
   place-items: center;
 
   border: 1px solid var(--dw-border);
-
   border-radius: 50%;
 
   background: var(--dw-surface);
-
   color: var(--dw-text);
 
   font-size: 1.2rem;
@@ -2226,17 +2236,28 @@ body,
 
 /*
  * Forms already have their own close
- * buttons. The sheet now owns closing.
+ * buttons. The sheet owns closing.
  */
 .modal-sheet-body .entry-form-header .close-button {
   display: none;
 }
 
+/*
+ * Cards inside a sheet are already
+ * contained by the modal itself.
+ */
+.modal-sheet-body > .card,
+.modal-sheet-body > .create-type-form {
+  margin-top: 0;
+}
+
 @media (max-width: 640px) {
   .modal-sheet-backdrop {
-    align-items: flex-end;
-
     padding: 0;
+  }
+
+  .modal-sheet-backdrop[open] {
+    align-items: flex-end;
   }
 
   .modal-sheet input,
@@ -2247,11 +2268,9 @@ body,
 
   .modal-sheet {
     width: 100%;
-
     max-height: 94dvh;
 
     border-radius: 22px 22px 0 0;
-
     border-bottom: 0;
   }
 
@@ -2441,4 +2460,474 @@ body,
   color: var(--dw-library-accent);
 
   font-weight: 700;
+}
+/* Faces field */
+
+.faces-field {
+  display: grid;
+
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+
+  gap: 8px;
+}
+
+.face-choice {
+  display: grid;
+
+  place-items: center;
+
+  gap: 5px;
+
+  min-width: 0;
+
+  padding: 10px 5px;
+
+  border: 1px solid var(--dw-border);
+
+  border-radius: 12px;
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+
+  cursor: pointer;
+}
+
+.face-choice:hover {
+  background: var(--dw-surface-soft);
+}
+
+.face-choice.selected {
+  border-color: var(--dw-accent);
+
+  outline: 2px solid color-mix(in srgb, var(--dw-accent) 25%, transparent);
+}
+
+.face-choice-icon {
+  font-size: 1.65rem;
+
+  line-height: 1;
+}
+
+.face-choice-label {
+  font-size: 0.68rem;
+
+  text-align: center;
+}
+
+.entry-face-value {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .face-choice {
+    padding: 11px 3px;
+  }
+
+  .face-choice-icon {
+    font-size: 1.8rem;
+  }
+
+  .face-choice-label {
+    display: none;
+  }
+}
+
+/* Calendar Lens redesign
+   Append this near the bottom of App.css so it overrides the older calendar rules. */
+
+.calendar-lens-control {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.calendar-lens-control label {
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-lens-control label > span {
+  color: var(--dw-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.calendar-lens-control select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--dw-border);
+  border-radius: 10px;
+  background: var(--dw-surface);
+  color: var(--dw-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.calendar-lens-control p {
+  margin: 0;
+  color: var(--dw-muted);
+  font-size: 0.72rem;
+}
+
+.calendar-week {
+  align-items: stretch;
+  gap: 4px;
+}
+
+.calendar-day {
+  /*
+   * The old calendar used aspect-ratio: 1 to make circular day buttons.
+   * Reset it for the rectangular Lens tiles or their min-height can force
+   * them wider than their grid column.
+   */
+  aspect-ratio: auto;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 104px;
+  height: auto;
+
+  overflow: hidden;
+
+  padding: 6px;
+
+  border: 1px solid var(--dw-border);
+  border-radius: 9px;
+
+  background: var(--dw-surface);
+  color: var(--dw-text);
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+
+  gap: 6px;
+
+  text-align: left;
+}
+
+.calendar-day:hover {
+  border-color: var(--dw-muted);
+}
+
+.calendar-day.selected {
+  border-width: 2px;
+}
+
+.calendar-day.today {
+  border-width: 2px;
+}
+
+.calendar-day.outside-month {
+  opacity: 0.35;
+}
+
+.calendar-day-number {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.calendar-lens-metrics {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.calendar-lens-metric-list {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
+
+.calendar-lens-metric {
+  min-width: 0;
+}
+
+.calendar-lens-scale {
+  display: grid;
+  gap: 3px;
+}
+
+.calendar-lens-metric-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dw-muted);
+  font-size: 0.62rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-lens-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--dw-surface-soft);
+}
+
+.calendar-lens-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.calendar-lens-text,
+.calendar-lens-face {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.calendar-lens-metric-value {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.64rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-lens-face-value {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.calendar-lens-face-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.calendar-lens-face-label {
+  color: var(--dw-muted);
+  font-size: 0.62rem;
+}
+
+.calendar-lens-metrics.compact .calendar-lens-face-label {
+  display: none;
+}
+
+.calendar-day-lens-summary {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0 18px;
+  padding: 15px;
+  border: 1px solid var(--dw-border);
+  border-radius: 14px;
+  background: var(--dw-surface-soft);
+}
+
+.calendar-day-lens-summary.empty p {
+  margin: 0;
+  color: var(--dw-muted);
+  font-size: 0.8rem;
+}
+
+.calendar-day-lens-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-day-lens-heading > span {
+  color: var(--dw-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.calendar-day-lens-heading strong {
+  font-size: 1rem;
+}
+
+.calendar-day-lens-summary .calendar-lens-metric-list {
+  gap: 12px;
+}
+
+.calendar-day-lens-summary .calendar-lens-scale {
+  gap: 6px;
+}
+
+.calendar-day-lens-summary .calendar-lens-metric-label {
+  font-size: 0.76rem;
+}
+
+.calendar-day-lens-summary .calendar-lens-track {
+  height: 10px;
+}
+
+.calendar-day-lens-summary .calendar-lens-metric-value {
+  font-size: 0.82rem;
+}
+
+.calendar-day-lens-summary .calendar-lens-face-icon {
+  font-size: 1.55rem;
+}
+
+.calendar-day-lens-summary .calendar-lens-face-label {
+  font-size: 0.78rem;
+}
+
+@media (max-width: 640px) {
+  .calendar-week {
+    gap: 2px;
+  }
+
+  .calendar-day {
+    min-height: 76px;
+    padding: 4px 3px;
+    border-radius: 6px;
+    gap: 4px;
+  }
+
+  .calendar-day-number {
+    font-size: 0.66rem;
+  }
+
+  .calendar-lens-metric-list {
+    gap: 4px;
+  }
+
+  .calendar-lens-metrics.compact .calendar-lens-metric-label {
+    display: none;
+  }
+
+  .calendar-lens-metrics.compact .calendar-lens-track {
+    height: 5px;
+  }
+
+  .calendar-lens-metrics.compact .calendar-lens-text {
+    justify-content: center;
+  }
+
+  .calendar-lens-metrics.compact .calendar-lens-metric-value {
+    max-width: 100%;
+    font-size: 0.56rem;
+    text-align: center;
+  }
+
+  .calendar-lens-metrics.compact .calendar-lens-face {
+    justify-content: center;
+  }
+
+  .calendar-lens-metrics.compact .calendar-lens-face-icon {
+    font-size: 1rem;
+  }
+}
+
+/* Calendar finishing pass
+   Append this to the bottom of App.css. */
+
+/* Month name is now the whole-month Review action. */
+.calendar-month-review-button {
+  padding: 3px 8px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--dw-text);
+
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.calendar-month-review-button:hover {
+  background: var(--dw-surface-soft);
+}
+
+.calendar-month-review-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* Calendar bottom sheet: fully theme-aware. */
+.calendar-sheet {
+  border: 1px solid var(--dw-border);
+
+  background: var(--dw-background);
+  color: var(--dw-text);
+
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+}
+
+.sheet-handle {
+  background: var(--dw-border);
+}
+
+.sheet-header p,
+.sheet-header span,
+.sheet-empty-state {
+  color: var(--dw-muted);
+}
+
+.sheet-export-button,
+.sheet-close-button,
+.view-all-entries-button {
+  border-color: var(--dw-border);
+
+  background: var(--dw-surface);
+  color: var(--dw-text);
+}
+
+.sheet-close-button:hover,
+.view-all-entries-button:hover {
+  background: var(--dw-surface-soft);
+}
+
+/*
+ * Period summary styles had several
+ * older hard-coded light surfaces.
+ */
+.calendar-sheet .period-summary-group {
+  border-color: var(--dw-border);
+
+  background: var(--dw-surface);
+}
+
+.calendar-sheet .period-summary-title {
+  background: var(--dw-surface-soft);
+}
+
+.calendar-sheet .period-summary-title span,
+.calendar-sheet .summary-row span {
+  color: var(--dw-muted);
+}
+
+.calendar-sheet .summary-row {
+  border-color: var(--dw-border);
+}
+
+.calendar-sheet .saved-entry-card {
+  border-color: var(--dw-border);
+
+  background: var(--dw-surface);
+}
+
+@media (max-width: 640px) {
+  .calendar-month-review-button {
+    font-size: 1rem;
+  }
 }

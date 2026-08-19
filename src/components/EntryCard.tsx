@@ -9,6 +9,8 @@ import type {
   TimerValue,
 } from "../types/entryType";
 
+import { getFaceOption } from "../utils/faces";
+
 interface EntryCardProps {
   entry: DaywardenEntry;
 
@@ -138,7 +140,21 @@ function renderValue(
           <strong>{String(value)}</strong>
         </div>
       );
+    case "faces": {
+      const face = getFaceOption(value);
 
+      return (
+        <div className="entry-value">
+          <span>{field.name}</span>
+
+          <strong className="entry-face-value">
+            <span aria-hidden="true">{face.face}</span>
+
+            <span>{face.label}</span>
+          </strong>
+        </div>
+      );
+    }
     case "time":
       if (!value) {
         return null;

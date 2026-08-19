@@ -23,6 +23,8 @@ interface DraftField {
 
   includeInSummary: boolean;
 
+  showInCalendar: boolean;
+
   colorDirection: ColorDirection;
 }
 
@@ -43,6 +45,10 @@ const fieldTypeOptions: FieldTypeOption[] = [
   {
     type: "scale",
     label: "Scale 0–100",
+  },
+  {
+    type: "faces",
+    label: "Faces",
   },
   {
     type: "time",
@@ -76,6 +82,7 @@ function getDefaultSummaryMode(type: EntryFieldType): SummaryMode {
       return "sum";
 
     case "scale":
+    case "faces":
       return "average";
 
     case "duration":
@@ -111,6 +118,8 @@ function createDraftField(): DraftField {
     includeInSummary: false,
 
     colorDirection: "neutral",
+
+    showInCalendar: false,
   };
 }
 
@@ -144,11 +153,16 @@ function CreateEntryTypeForm({ onSave, onCancel }: CreateEntryTypeFormProps) {
   }
 
   function handleFieldTypeChange(fieldId: string, type: EntryFieldType) {
+    const supportsCalendarVisual = type === "scale" || type === "faces";
+
     updateField(fieldId, {
       type,
+
       includeInSummary: canSummarize(type),
 
-      colorDirection: type === "scale" ? "neutral" : "neutral",
+      showInCalendar: supportsCalendarVisual,
+
+      colorDirection: "neutral",
     });
   }
 
@@ -211,6 +225,12 @@ function CreateEntryTypeForm({ onSave, onCancel }: CreateEntryTypeFormProps) {
           field.includeInSummary && canSummarize(field.type)
             ? defaultSummaryMode
             : "none",
+
+        ...(field.type === "scale" || field.type === "faces"
+          ? {
+              showInCalendar: field.showInCalendar,
+            }
+          : {}),
 
         ...(field.type === "scale"
           ? {
@@ -353,6 +373,22 @@ function CreateEntryTypeForm({ onSave, onCancel }: CreateEntryTypeFormProps) {
                   />
 
                   <span>Include in summaries</span>
+                </label>
+              )}
+
+              {(field.type === "scale" || field.type === "faces") && (
+                <label className="summary-toggle">
+                  <input
+                    type="checkbox"
+                    checked={field.showInCalendar}
+                    onChange={(event) =>
+                      updateField(field.id, {
+                        showInCalendar: event.target.checked,
+                      })
+                    }
+                  />
+
+                  <span>Show in Calendar</span>
                 </label>
               )}
 
