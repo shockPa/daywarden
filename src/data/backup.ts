@@ -84,6 +84,23 @@ const encoder = new TextEncoder();
 
 const decoder = new TextDecoder();
 
+export const ENCRYPTED_BACKUP_UNAVAILABLE_MESSAGE =
+  "Encrypted backup and restore require a secure HTTPS connection.";
+
+export function canUseEncryptedBackups(): boolean {
+  return (
+    window.isSecureContext &&
+    typeof crypto !== "undefined" &&
+    Boolean(crypto.subtle)
+  );
+}
+
+function requireEncryptedBackupSupport(): void {
+  if (!canUseEncryptedBackups()) {
+    throw new Error(ENCRYPTED_BACKUP_UNAVAILABLE_MESSAGE);
+  }
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
 
@@ -298,6 +315,8 @@ function getBackupFilename(): string {
 }
 
 export async function downloadEncryptedBackup(password: string): Promise<void> {
+  requireEncryptedBackupSupport();
+
   const contents = await encryptBackup(password);
 
   const blob = new Blob([contents], {
@@ -491,6 +510,8 @@ export async function restoreEncryptedBackup(
   file: File,
   password: string,
 ): Promise<void> {
+  requireEncryptedBackupSupport();
+
   const contents = await file.text();
 
   /*

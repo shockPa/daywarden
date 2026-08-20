@@ -1,11 +1,15 @@
 import { useState } from "react";
 
 import {
+  canUseEncryptedBackups,
   downloadEncryptedBackup,
+  ENCRYPTED_BACKUP_UNAVAILABLE_MESSAGE,
   restoreEncryptedBackup,
 } from "../data/backup";
 
 function BackupRestorePanel() {
+  const encryptedBackupsAvailable = canUseEncryptedBackups();
+
   const [backupPassword, setBackupPassword] = useState("");
 
   const [confirmBackupPassword, setConfirmBackupPassword] = useState("");
@@ -47,8 +51,15 @@ function BackupRestorePanel() {
       setBackupPassword("");
 
       setConfirmBackupPassword("");
-    } catch {
-      setBackupMessage("Daywarden couldn't create the backup.");
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === ENCRYPTED_BACKUP_UNAVAILABLE_MESSAGE
+      ) {
+        setBackupMessage(error.message);
+      } else {
+        setBackupMessage("Daywarden couldn't create the backup.");
+      }
     } finally {
       setBackupBusy(false);
     }
@@ -100,6 +111,12 @@ function BackupRestorePanel() {
 
   return (
     <div className="backup-panel">
+      {!encryptedBackupsAvailable && (
+        <p className="backup-warning" role="status">
+          Encrypted backup and restore require a secure HTTPS connection. Open
+          Daywarden over HTTPS to use encryption.
+        </p>
+      )}
       <div className="backup-block">
         <strong>Create backup</strong>
 
@@ -132,7 +149,7 @@ function BackupRestorePanel() {
         <button
           className="settings-action"
           type="button"
-          disabled={backupBusy}
+          disabled={backupBusy || !encryptedBackupsAvailable}
           onClick={handleBackup}
         >
           {backupBusy ? "Creating backup..." : "Create encrypted backup"}
@@ -188,7 +205,7 @@ function BackupRestorePanel() {
         <button
           className="settings-action destructive-action"
           type="button"
-          disabled={restoreBusy}
+          disabled={restoreBusy || !encryptedBackupsAvailable}
           onClick={handleRestore}
         >
           {restoreBusy ? "Restoring..." : "Restore backup"}
