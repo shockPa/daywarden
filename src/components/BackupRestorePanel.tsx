@@ -103,7 +103,7 @@ function BackupRestorePanel() {
       <div className="backup-block">
         <strong>Create backup</strong>
 
-        <p>Save an encrypted copy of your Daywarden data.</p>
+        <p>Save an encrypted copy of your Daywarden data safely.</p>
 
         <label>
           Backup password
