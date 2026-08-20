@@ -365,6 +365,10 @@ function App() {
     (entryType) => !preferences.hiddenIds.includes(entryType.id),
   );
 
+  const calendarAddableEntryTypes = visibleEntryTypes.filter(
+    (entryType) => !entryType.fields.some((field) => field.type === "timer"),
+  );
+
   const today = new Intl.DateTimeFormat("en", {
     weekday: "long",
     day: "numeric",
@@ -426,7 +430,33 @@ function App() {
 
     setEditingEntry(null);
 
+    setEditingDate("");
+    setEditingTime("");
+
     setSelectedEntryType(entryType);
+  }
+
+  function handleCreateEntryForDate(
+    entryType: EntryTypeDefinition,
+    dateKey: string,
+  ) {
+    setCreatingEntryType(false);
+    setManagingEntryTypes(false);
+
+    setEditingEntry(null);
+
+    /*
+     * Calendar chooses the day.
+     * Default the time to right now,
+     * but allow it to be adjusted
+     * in the normal entry form.
+     */
+    setEditingDate(dateKey);
+    setEditingTime(getLocalTimeValue(new Date()));
+
+    setSelectedEntryType(entryType);
+
+    setLibraryCaptureMode(null);
   }
 
   function handleCreateEntryType() {
@@ -509,7 +539,10 @@ function App() {
 
         entryTypeName: selectedEntryType.name,
 
-        createdAt: new Date().toISOString(),
+        createdAt:
+          editingDate && editingTime
+            ? combineLocalDateAndTime(editingDate, editingTime)
+            : new Date().toISOString(),
 
         values,
       };
@@ -535,7 +568,6 @@ function App() {
     if (!entryType) {
       return;
     }
-    setActiveView("today");
 
     setCreatingEntryType(false);
     setManagingEntryTypes(false);
@@ -802,51 +834,6 @@ function App() {
                 </ModalSheet>
               )}
 
-              {selectedEntryType && (
-                <ModalSheet
-                  open={selectedEntryType !== null}
-                  ariaLabel={
-                    editingEntry
-                      ? `Edit ${selectedEntryType?.name ?? "entry"}`
-                      : `New ${selectedEntryType?.name ?? "entry"}`
-                  }
-                  onClose={() => {
-                    setEditingEntry(null);
-
-                    setEditingDate("");
-                    setEditingTime("");
-
-                    setSelectedEntryType(null);
-                  }}
-                >
-                  {selectedEntryType && (
-                    <DynamicEntryForm
-                      key={editingEntry?.id ?? selectedEntryType.id}
-                      entryType={selectedEntryType}
-                      initialValues={editingEntry?.values}
-                      submitLabel={editingEntry ? "Save changes" : "Save entry"}
-                      entryDate={editingEntry ? editingDate : undefined}
-                      entryTime={editingEntry ? editingTime : undefined}
-                      onEntryDateChange={
-                        editingEntry ? setEditingDate : undefined
-                      }
-                      onEntryTimeChange={
-                        editingEntry ? setEditingTime : undefined
-                      }
-                      onSave={handleSaveEntry}
-                      onClose={() => {
-                        setEditingEntry(null);
-
-                        setEditingDate("");
-                        setEditingTime("");
-
-                        setSelectedEntryType(null);
-                      }}
-                    />
-                  )}
-                </ModalSheet>
-              )}
-
               <TodayEntries
                 entries={entries}
                 entryTypes={allEntryTypeDefinitions}
@@ -869,6 +856,8 @@ function App() {
             <CalendarView
               entries={entries}
               entryTypes={allEntryTypeDefinitions}
+              addableEntryTypes={calendarAddableEntryTypes}
+              onAddEntry={handleCreateEntryForDate}
               onEdit={handleEditEntry}
               onDelete={handleDeleteEntry}
             />
@@ -876,6 +865,52 @@ function App() {
 
           {activeView === "library" && <LibraryView />}
         </>
+      )}
+
+      {selectedEntryType && (
+        <ModalSheet
+          open={selectedEntryType !== null}
+          ariaLabel={
+            editingEntry
+              ? `Edit ${selectedEntryType.name}`
+              : `New ${selectedEntryType.name}`
+          }
+          onClose={() => {
+            setEditingEntry(null);
+
+            setEditingDate("");
+            setEditingTime("");
+
+            setSelectedEntryType(null);
+          }}
+        >
+          <DynamicEntryForm
+            key={
+              editingEntry?.id ??
+              `${selectedEntryType.id}-${editingDate || "today"}`
+            }
+            entryType={selectedEntryType}
+            initialValues={editingEntry?.values}
+            submitLabel={editingEntry ? "Save changes" : "Save entry"}
+            entryDate={editingEntry || editingDate ? editingDate : undefined}
+            entryTime={editingEntry || editingDate ? editingTime : undefined}
+            onEntryDateChange={
+              editingEntry || editingDate ? setEditingDate : undefined
+            }
+            onEntryTimeChange={
+              editingEntry || editingDate ? setEditingTime : undefined
+            }
+            onSave={handleSaveEntry}
+            onClose={() => {
+              setEditingEntry(null);
+
+              setEditingDate("");
+              setEditingTime("");
+
+              setSelectedEntryType(null);
+            }}
+          />
+        </ModalSheet>
       )}
 
       {!settingsOpen && !managingEntryTypes && (

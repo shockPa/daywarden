@@ -38,6 +38,10 @@ interface CalendarViewProps {
 
   entryTypes: EntryTypeDefinition[];
 
+  addableEntryTypes: EntryTypeDefinition[];
+
+  onAddEntry: (entryType: EntryTypeDefinition, dateKey: string) => void;
+
   onEdit: (entry: DaywardenEntry) => void;
 
   onDelete: (entry: DaywardenEntry) => void;
@@ -600,6 +604,8 @@ function CalendarLensVisualization({
 function CalendarView({
   entries,
   entryTypes,
+  addableEntryTypes,
+  onAddEntry,
   onEdit,
   onDelete,
 }: CalendarViewProps) {
@@ -637,6 +643,8 @@ function CalendarView({
   >([]);
 
   const [calendarHelpOpen, setCalendarHelpOpen] = useState(false);
+
+  const [addEntryPickerOpen, setAddEntryPickerOpen] = useState(false);
 
   const lensPickerRef = useRef<HTMLDetailsElement | null>(null);
 
@@ -966,6 +974,7 @@ function CalendarView({
     setMultiSelect(false);
     setSheetOpen(false);
     setShowAllEntries(false);
+    setAddEntryPickerOpen(false);
   }
 
   function reviewSelection() {
@@ -982,6 +991,7 @@ function CalendarView({
 
   function closeSheet() {
     setSheetOpen(false);
+    setAddEntryPickerOpen(false);
 
     if (!multiSelect) {
       setSelectedDates([]);
@@ -1324,24 +1334,22 @@ function CalendarView({
                         selectedLensEntryTypes.length > 1 &&
                         dayLensEntryTypes.length > 0 && (
                           <div className="calendar-multi-lens-metrics">
-                            {dayLensEntryTypes
-                              .slice(0, 3)
-                              .map((entryType) => (
-                                <div
-                                  className="calendar-multi-lens-item"
-                                  key={entryType.id}
-                                  title={entryType.name}
-                                >
-                                  <CalendarLensVisualization
-                                    entryType={entryType}
-                                    entries={
-                                      dayLensEntries?.get(entryType.id) ?? []
-                                    }
-                                    compact
-                                    maxMetrics={1}
-                                  />
-                                </div>
-                              ))}
+                            {dayLensEntryTypes.slice(0, 3).map((entryType) => (
+                              <div
+                                className="calendar-multi-lens-item"
+                                key={entryType.id}
+                                title={entryType.name}
+                              >
+                                <CalendarLensVisualization
+                                  entryType={entryType}
+                                  entries={
+                                    dayLensEntries?.get(entryType.id) ?? []
+                                  }
+                                  compact
+                                  maxMetrics={1}
+                                />
+                              </div>
+                            ))}
 
                             {dayLensEntryTypes.length > 3 && (
                               <span className="calendar-multi-lens-more">
@@ -1383,6 +1391,50 @@ function CalendarView({
         </ModalSheet>
       )}
 
+      {addEntryPickerOpen && selectedDates.length === 1 && (
+        <ModalSheet
+          open={addEntryPickerOpen}
+          ariaLabel="Add activity"
+          onClose={() => setAddEntryPickerOpen(false)}
+        >
+          <div className="calendar-add-entry-picker">
+            <div>
+              <h2>Add activity</h2>
+
+              <p>
+                {new Intl.DateTimeFormat("en", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                }).format(parseLocalDateKey(selectedDates[0]))}
+              </p>
+            </div>
+
+            {addableEntryTypes.length === 0 ? (
+              <p className="calendar-add-entry-empty">
+                No activities are available to add.
+              </p>
+            ) : (
+              <div className="calendar-add-entry-list">
+                {addableEntryTypes.map((entryType) => (
+                  <button
+                    key={entryType.id}
+                    type="button"
+                    onClick={() => {
+                      setAddEntryPickerOpen(false);
+
+                      onAddEntry(entryType, selectedDates[0]);
+                    }}
+                  >
+                    {entryType.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </ModalSheet>
+      )}
+
       {sheetOpen && (
         <div className="sheet-backdrop" onClick={closeSheet}>
           <section
@@ -1406,6 +1458,17 @@ function CalendarView({
               </div>
 
               <div className="sheet-header-actions">
+                {selectionKind === "day" && selectedDates.length === 1 && (
+                  <button
+                    className="sheet-add-entry-button"
+                    type="button"
+                    aria-label="Add activity to this day"
+                    title="Add activity"
+                    onClick={() => setAddEntryPickerOpen(true)}
+                  >
+                    +
+                  </button>
+                )}
                 <button
                   className="sheet-export-button"
                   type="button"
@@ -1431,9 +1494,7 @@ function CalendarView({
                 <CalendarLensVisualization
                   key={entryType.id}
                   entryType={entryType}
-                  entries={
-                    selectedLensEntriesByType.get(entryType.id) ?? []
-                  }
+                  entries={selectedLensEntriesByType.get(entryType.id) ?? []}
                 />
               ))}
 

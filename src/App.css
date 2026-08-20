@@ -3215,3 +3215,97 @@ body,
     font-size: 1rem;
   }
 }
+
+/* Add entry from Calendar */
+
+.sheet-add-entry-button {
+  display: grid;
+
+  width: 34px;
+  height: 34px;
+
+  flex: 0 0 auto;
+
+  place-items: center;
+
+  padding: 0;
+
+  border: 1px solid var(--dw-border);
+  border-radius: 50%;
+
+  background: var(--dw-surface);
+  color: var(--dw-text);
+
+  font-size: 1.25rem;
+  font-weight: 500;
+
+  line-height: 1;
+}
+
+.sheet-add-entry-button:hover {
+  background: var(--dw-surface-soft);
+}
+
+.calendar-add-entry-picker {
+  display: grid;
+
+  gap: 18px;
+}
+
+.calendar-add-entry-picker h2 {
+  margin: 0;
+
+  font-size: 1.15rem;
+}
+
+.calendar-add-entry-picker > div:first-child > p {
+  margin: 4px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.8rem;
+}
+
+.calendar-add-entry-list {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 8px;
+}
+
+.calendar-add-entry-list button {
+  min-width: 0;
+
+  padding: 13px 12px;
+
+  border: 1px solid var(--dw-border);
+  border-radius: 11px;
+
+  background: var(--dw-surface-soft);
+  color: var(--dw-text);
+
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+
+  text-align: left;
+}
+
+.calendar-add-entry-list button:hover {
+  border-color: var(--dw-muted);
+}
+
+.calendar-add-entry-empty {
+  margin: 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.82rem;
+}
+
+@media (max-width: 420px) {
+  .calendar-add-entry-list {
+    grid-template-columns: 1fr;
+  }
+}
