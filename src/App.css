@@ -1777,6 +1777,51 @@ body,
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* Completed timer editor */
+
+.timer-entry-form .entry-form-header {
+  margin-bottom: 12px;
+}
+
+.timer-entry-summary {
+  display: flex;
+
+  align-items: baseline;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-bottom: 24px;
+  padding: 0 2px 12px;
+
+  border-bottom: 1px solid var(--dw-border);
+}
+
+.timer-entry-summary span {
+  color: var(--dw-muted);
+
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.timer-entry-summary strong {
+  font-size: 0.82rem;
+  font-weight: 650;
+
+  text-align: right;
+}
+
+@media (max-width: 420px) {
+  .timer-entry-summary {
+    display: grid;
+    gap: 4px;
+  }
+
+  .timer-entry-summary strong {
+    text-align: left;
+  }
+}
+
 /* Active timers */
 
 .active-timers {

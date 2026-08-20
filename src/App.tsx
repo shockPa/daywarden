@@ -124,7 +124,7 @@ function App() {
 
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
 
-  async function handleStopTimer(timer: ActiveTimer) {
+  async function handleStopTimer(timer: ActiveTimer, openEditor = true) {
     const endedAt = new Date().toISOString();
 
     const timerValue: TimerValue = {
@@ -152,17 +152,20 @@ function App() {
     };
 
     const result = await finishActiveTimer(timer.id, entry);
-
     setEntries(result.entries);
 
     setActiveTimers(result.activeTimers);
+
+    if (openEditor) {
+      handleEditEntry(entry);
+    }
   }
 
   async function handleStopAllTimers() {
     const timersToStop = [...activeTimers];
 
     for (const timer of timersToStop) {
-      await handleStopTimer(timer);
+      await handleStopTimer(timer, false);
     }
   }
 
@@ -477,6 +480,10 @@ function App() {
       return;
     }
 
+    const isTimerEntry = selectedEntryType.fields.some(
+      (field) => field.type === "timer",
+    );
+
     if (editingEntry) {
       const updatedEntry: DaywardenEntry = {
         ...editingEntry,
@@ -485,8 +492,9 @@ function App() {
 
         entryTypeName: selectedEntryType.name,
 
-        createdAt: combineLocalDateAndTime(editingDate, editingTime),
-
+        createdAt: isTimerEntry
+          ? editingEntry.createdAt
+          : combineLocalDateAndTime(editingDate, editingTime),
         values,
       };
 
@@ -541,11 +549,6 @@ function App() {
     setSelectedEntryType(entryType);
 
     setLibraryCaptureMode(null);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
   }
 
   async function handleDeleteEntry(entry: DaywardenEntry) {

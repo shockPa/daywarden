@@ -7,6 +7,7 @@ import type {
   EntryTypeDefinition,
   EntryValues,
   TimeRangeValue,
+  TimerValue,
 } from "../types/entryType";
 
 import { FACE_OPTIONS, normalizeFaceRating } from "../utils/faces";
@@ -72,6 +73,78 @@ function createInitialValues(fields: EntryFieldDefinition[]): EntryValues {
   );
 }
 
+function isTimerValue(value: unknown): value is TimerValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "startedAt" in value &&
+    "endedAt" in value &&
+    typeof value.startedAt === "string" &&
+    typeof value.endedAt === "string"
+  );
+}
+
+function formatTimerTime(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatTimerDate(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(value));
+}
+
+function formatTimerDuration(value: TimerValue): string {
+  const start = new Date(value.startedAt).getTime();
+  const end = new Date(value.endedAt).getTime();
+
+  const totalMinutes = Math.max(0, Math.round((end - start) / 60_000));
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${minutes} min`;
+}
+
+function formatTimerSummary(value: TimerValue): string {
+  const startedAt = new Date(value.startedAt);
+  const endedAt = new Date(value.endedAt);
+
+  const sameDay =
+    startedAt.getFullYear() === endedAt.getFullYear() &&
+    startedAt.getMonth() === endedAt.getMonth() &&
+    startedAt.getDate() === endedAt.getDate();
+
+  if (sameDay) {
+    return (
+      `${formatTimerDate(value.startedAt)} · ` +
+      `${formatTimerTime(value.startedAt)}–` +
+      `${formatTimerTime(value.endedAt)} · ` +
+      formatTimerDuration(value)
+    );
+  }
+
+  return (
+    `${formatTimerDate(value.startedAt)} ` +
+    `${formatTimerTime(value.startedAt)} – ` +
+    `${formatTimerDate(value.endedAt)} ` +
+    `${formatTimerTime(value.endedAt)} · ` +
+    formatTimerDuration(value)
+  );
+}
+
 function DynamicEntryForm({
   entryType,
   initialValues,
@@ -87,6 +160,10 @@ function DynamicEntryForm({
     ...createInitialValues(entryType.fields),
     ...initialValues,
   }));
+
+  const timerField = entryType.fields.find((field) => field.type === "timer");
+
+  const timerValue = timerField ? values[timerField.id] : undefined;
 
   const [saving, setSaving] = useState(false);
 
@@ -324,7 +401,12 @@ function DynamicEntryForm({
   }
 
   return (
-    <section className="entry-form card">
+    <section
+      className={
+        timerField ? "entry-form card timer-entry-form" : "entry-form card"
+      }
+    >
+      {" "}
       <div className="entry-form-header">
         <h2>{entryType.name}</h2>
 
@@ -337,8 +419,19 @@ function DynamicEntryForm({
           ×
         </button>
       </div>
+      {timerField && (
+        <div className="timer-entry-summary">
+          <span>{timerField.name}</span>
 
-      {entryDate !== undefined &&
+          <strong>
+            {isTimerValue(timerValue)
+              ? formatTimerSummary(timerValue)
+              : "Timer details unavailable"}
+          </strong>
+        </div>
+      )}
+      {!timerField &&
+        entryDate !== undefined &&
         entryTime !== undefined &&
         onEntryDateChange &&
         onEntryTimeChange && (
@@ -364,17 +457,17 @@ function DynamicEntryForm({
             </label>
           </div>
         )}
-
       <div className="entry-fields">
-        {entryType.fields.map((field) => (
-          <div className="entry-field" key={field.id}>
-            <label className="field-name">{field.name}</label>
+        {entryType.fields
+          .filter((field) => field.type !== "timer")
+          .map((field) => (
+            <div className="entry-field" key={field.id}>
+              <label className="field-name">{field.name}</label>
 
-            {renderField(field)}
-          </div>
-        ))}
+              {renderField(field)}
+            </div>
+          ))}
       </div>
-
       <button
         className="save-button active-save"
         type="button"
