@@ -2,6 +2,35 @@
   box-sizing: border-box;
 }
 
+/* Daywarden brand */
+
+:root {
+  --dw-brand-font:
+    "SN Pro", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  --dw-brand-ink: #082a57;
+  --dw-brand-soft: rgba(8, 42, 87, 0.07);
+
+  --dw-decor-coral: #f45d4c;
+  --dw-decor-orange: #ff922e;
+  --dw-decor-yellow: #ffc72c;
+  --dw-decor-green: #67bd59;
+  --dw-decor-blue: #43afd6;
+}
+
+:root[data-theme="dark"] {
+  --dw-brand-ink: #d9e8fa;
+  --dw-brand-soft: rgba(217, 232, 250, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    --dw-brand-ink: #d9e8fa;
+    --dw-brand-soft: rgba(217, 232, 250, 0.08);
+  }
+}
+
 button,
 input,
 textarea {
@@ -22,7 +51,7 @@ button:disabled {
 
   margin: 0 auto;
 
-  padding: 24px 20px 100px;
+  padding: 24px 20px calc(106px + env(safe-area-inset-bottom));
 }
 
 /* Header */
@@ -39,10 +68,59 @@ button:disabled {
   margin-bottom: 28px;
 }
 
+.daywarden-brand {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+.daywarden-header-doodle {
+  width: 54px;
+  height: 32px;
+
+  flex: 0 0 auto;
+
+  pointer-events: none;
+
+  transform: rotate(-5deg);
+}
+
+.daywarden-header-doodle-today {
+  color: var(--dw-decor-coral);
+}
+
+.daywarden-header-doodle-calendar {
+  color: var(--dw-decor-blue);
+
+  transform: rotate(1deg);
+}
+
+.daywarden-header-doodle-log {
+  color: var(--dw-decor-yellow);
+
+  transform: rotate(4deg);
+}
+
+.daywarden-header-doodle-library {
+  color: var(--dw-decor-green);
+
+  transform: rotate(-7deg);
+}
+
 .daywarden-logo {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  position: relative;
+
+  z-index: 1;
+
+  color: var(--dw-brand-ink);
+
+  font-family: var(--dw-brand-font);
+  font-size: 1.7rem;
+  font-weight: 500;
+
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
 .settings-button {
@@ -318,7 +396,7 @@ h1 {
 
   margin: 0 auto;
 
-  padding: 12px 8px;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
 
   border-top: 1px solid #ddd;
 
@@ -326,19 +404,53 @@ h1 {
 }
 
 .navigation button {
-  padding: 8px;
+  position: relative;
+
+  padding: 9px 12px;
 
   border: 0;
+  border-radius: 11px;
 
   background: transparent;
 
-  color: #777;
+  color: var(--dw-muted);
+
+  font-family: var(--dw-brand-font);
+  font-size: 0.92rem;
+  font-weight: 500;
+
+  letter-spacing: -0.015em;
 }
 
 .navigation .nav-active {
-  color: #111;
+  background: var(--dw-brand-soft);
 
-  font-weight: 700;
+  color: var(--dw-brand-ink);
+
+  font-weight: 500;
+}
+
+.nav-today-label {
+  position: relative;
+
+  display: inline-block;
+}
+
+.nav-today-spark {
+  position: absolute;
+
+  top: -14px;
+  left: -14px;
+
+  width: 23px;
+  height: 19px;
+
+  color: var(--dw-decor-yellow);
+
+  pointer-events: none;
+
+  transform: rotate(-11deg);
+  transform-origin: center;
 }
 
 @media (max-width: 420px) {

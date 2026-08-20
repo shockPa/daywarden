@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 
 import "./App.css";
 
+import Spark from "./components/decor/Spark";
+import Doodle from "./components/decor/Doodle";
+
 import CreateEntryTypeForm from "./components/CreateEntryTypeForm";
 import DynamicEntryForm from "./components/DynamicEntryForm";
 import EntryTypeManager from "./components/EntryTypeManager";
@@ -659,7 +662,22 @@ function App() {
     <main className="app">
       <header className="header">
         <div className="top-bar">
-          <div className="daywarden-logo">Daywarden</div>
+          <div className="daywarden-brand">
+            <div className="daywarden-logo">Daywarden</div>
+
+            <Doodle
+              variant={
+                activeView === "today"
+                  ? "loop"
+                  : activeView === "calendar"
+                    ? "arch-loop"
+                    : activeView === "log"
+                      ? "curl"
+                      : "squiggle"
+              }
+              className={`daywarden-header-doodle daywarden-header-doodle-${activeView}`}
+            />
+          </div>
 
           <button
             className="settings-button"
@@ -864,7 +882,12 @@ function App() {
             type="button"
             onClick={() => handleNavigate("today")}
           >
-            Today
+            <span className="nav-today-label">
+              {activeView === "today" && (
+                <Spark variant="three" className="nav-today-spark" />
+              )}
+              Today
+            </span>
           </button>
 
           <button
