@@ -14,14 +14,20 @@ export async function getEntryTypePreferences(): Promise<EntryTypePreferences> {
 
   const value = await database.get("settings", PREFERENCES_KEY);
 
-  if (!value || typeof value !== "object") {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return defaultPreferences;
   }
 
   return {
-    order: Array.isArray(value.order) ? value.order : [],
+    order: Array.isArray(value.order)
+      ? value.order.filter((item): item is string => typeof item === "string")
+      : [],
 
-    hiddenIds: Array.isArray(value.hiddenIds) ? value.hiddenIds : [],
+    hiddenIds: Array.isArray(value.hiddenIds)
+      ? value.hiddenIds.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [],
   };
 }
 

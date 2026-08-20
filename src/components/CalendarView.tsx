@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import EntryCard from "./EntryCard";
 import PeriodSummary from "./PeriodSummary";
+import ModalSheet from "./ModalSheet";
 
 import type { DaywardenEntry } from "../types/entry";
 
@@ -19,8 +20,8 @@ import type {
 import { getFaceOption } from "../utils/faces";
 
 import {
-  getCalendarLensEntryTypeId,
-  saveCalendarLensEntryTypeId,
+  getCalendarLensEntryTypeIds,
+  saveCalendarLensEntryTypeIds,
 } from "../data/settingsStorage";
 
 import {
@@ -139,7 +140,6 @@ function formatShortDate(dateKey: string): string {
   }).format(parseLocalDateKey(dateKey));
 }
 
-
 type LensMetric =
   | {
       kind: "scale";
@@ -166,6 +166,7 @@ interface CalendarLensVisualizationProps {
   entryType: EntryTypeDefinition;
   entries: DaywardenEntry[];
   compact?: boolean;
+  maxMetrics?: number;
 }
 
 function isDurationValue(value: unknown): value is DurationValue {
@@ -281,10 +282,7 @@ function summarizeNumbers(
   }
 }
 
-function getScaleColor(
-  value: number,
-  colorDirection: ColorDirection,
-): string {
+function getScaleColor(value: number, colorDirection: ColorDirection): string {
   if (colorDirection === "neutral") {
     return "hsl(210 8% 55%)";
   }
@@ -292,9 +290,7 @@ function getScaleColor(
   const clamped = Math.min(100, Math.max(0, value));
 
   const meaningValue =
-    colorDirection === "higher-is-worse"
-      ? 100 - clamped
-      : clamped;
+    colorDirection === "higher-is-worse" ? 100 - clamped : clamped;
 
   /*
    * 0   -> red
@@ -330,8 +326,7 @@ function supportsCalendarLensField(field: EntryFieldDefinition): boolean {
 
 function isCalendarLensEntryType(entryType: EntryTypeDefinition): boolean {
   return (
-    !entryType.archived &&
-    entryType.fields.some(supportsCalendarLensField)
+    !entryType.archived && entryType.fields.some(supportsCalendarLensField)
   );
 }
 
@@ -352,9 +347,7 @@ function buildLensMetrics(
 
     switch (field.type) {
       case "scale": {
-        const numericValues = values
-          .map(Number)
-          .filter(Number.isFinite);
+        const numericValues = values.map(Number).filter(Number.isFinite);
 
         const summary = summarizeNumbers(numericValues, field);
 
@@ -376,7 +369,9 @@ function buildLensMetrics(
       case "faces": {
         const numericValues = values
           .map(Number)
-          .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5);
+          .filter(
+            (value) => Number.isFinite(value) && value >= 1 && value <= 5,
+          );
 
         const summary = summarizeNumbers(numericValues, field);
 
@@ -400,9 +395,7 @@ function buildLensMetrics(
       case "duration": {
         const totalMinutes = values.reduce<number>(
           (sum, value) =>
-            isDurationValue(value)
-              ? sum + durationToMinutes(value)
-              : sum,
+            isDurationValue(value) ? sum + durationToMinutes(value) : sum,
           0,
         );
 
@@ -419,9 +412,7 @@ function buildLensMetrics(
       case "timer": {
         const totalMinutes = values.reduce<number>(
           (sum, value) =>
-            isTimerValue(value)
-              ? sum + timerToMinutes(value)
-              : sum,
+            isTimerValue(value) ? sum + timerToMinutes(value) : sum,
           0,
         );
 
@@ -438,9 +429,7 @@ function buildLensMetrics(
       case "time-range": {
         const totalMinutes = values.reduce<number>(
           (sum, value) =>
-            isTimeRangeValue(value)
-              ? sum + timeRangeToMinutes(value)
-              : sum,
+            isTimeRangeValue(value) ? sum + timeRangeToMinutes(value) : sum,
           0,
         );
 
@@ -455,9 +444,7 @@ function buildLensMetrics(
       }
 
       case "number": {
-        const numericValues = values
-          .map(Number)
-          .filter(Number.isFinite);
+        const numericValues = values.map(Number).filter(Number.isFinite);
 
         const summary = summarizeNumbers(numericValues, field);
 
@@ -502,6 +489,7 @@ function CalendarLensVisualization({
   entryType,
   entries,
   compact = false,
+  maxMetrics = 4,
 }: CalendarLensVisualizationProps) {
   if (entries.length === 0) {
     if (compact) {
@@ -522,16 +510,12 @@ function CalendarLensVisualization({
 
   const metrics = buildLensMetrics(entryType, entries);
 
-  const visibleMetrics = compact
-    ? metrics.slice(0, 4)
-    : metrics;
+  const visibleMetrics = compact ? metrics.slice(0, maxMetrics) : metrics;
 
   return (
     <div
       className={
-        compact
-          ? "calendar-lens-metrics compact"
-          : "calendar-day-lens-summary"
+        compact ? "calendar-lens-metrics compact" : "calendar-day-lens-summary"
       }
     >
       {!compact && (
@@ -583,10 +567,7 @@ function CalendarLensVisualization({
                 </span>
 
                 <span className="calendar-lens-face-value">
-                  <span
-                    className="calendar-lens-face-icon"
-                    aria-hidden="true"
-                  >
+                  <span className="calendar-lens-face-icon" aria-hidden="true">
                     {metric.face}
                   </span>
 
@@ -603,9 +584,7 @@ function CalendarLensVisualization({
               className="calendar-lens-metric calendar-lens-text"
               key={metric.fieldId}
             >
-              <span className="calendar-lens-metric-label">
-                {metric.label}
-              </span>
+              <span className="calendar-lens-metric-label">{metric.label}</span>
 
               <strong className="calendar-lens-metric-value">
                 {metric.value}
@@ -653,65 +632,151 @@ function CalendarView({
     [entryTypes],
   );
 
-  const [
-    selectedLensEntryTypeId,
-    setSelectedLensEntryTypeId,
-  ] = useState("");
+  const [selectedLensEntryTypeIds, setSelectedLensEntryTypeIds] = useState<
+    string[]
+  >([]);
+
+  const [calendarHelpOpen, setCalendarHelpOpen] = useState(false);
+
+  const lensPickerRef = useRef<HTMLDetailsElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadSavedLens() {
-      const savedEntryTypeId =
-        await getCalendarLensEntryTypeId();
+    async function loadSavedLenses() {
+      const savedEntryTypeIds = await getCalendarLensEntryTypeIds();
 
-      if (
-        !cancelled &&
-        savedEntryTypeId
-      ) {
-        setSelectedLensEntryTypeId(
-          savedEntryTypeId,
-        );
+      if (cancelled) {
+        return;
+      }
+
+      if (savedEntryTypeIds !== null) {
+        setSelectedLensEntryTypeIds(savedEntryTypeIds);
+
+        return;
+      }
+
+      if (lensEntryTypes.length > 0) {
+        const defaultSelection = [lensEntryTypes[0].id];
+
+        setSelectedLensEntryTypeIds(defaultSelection);
+
+        void saveCalendarLensEntryTypeIds(defaultSelection);
       }
     }
 
-    void loadSavedLens();
+    void loadSavedLenses();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [lensEntryTypes]);
 
-  const activeLensEntryType =
-    lensEntryTypes.find(
-      (entryType) => entryType.id === selectedLensEntryTypeId,
-    ) ?? lensEntryTypes[0];
+  const selectedLensEntryTypes = useMemo(
+    () =>
+      lensEntryTypes.filter((entryType) =>
+        selectedLensEntryTypeIds.includes(entryType.id),
+      ),
+    [lensEntryTypes, selectedLensEntryTypeIds],
+  );
 
-  const activeLensEntryTypeId = activeLensEntryType?.id ?? "";
+  const selectedLensEntryTypeIdSet = useMemo(
+    () => new Set(selectedLensEntryTypes.map((entryType) => entryType.id)),
+    [selectedLensEntryTypes],
+  );
+
+  const allLensesSelected =
+    lensEntryTypes.length > 0 &&
+    selectedLensEntryTypes.length === lensEntryTypes.length;
+
+  const someLensesSelected =
+    selectedLensEntryTypes.length > 0 && !allLensesSelected;
+
+  let lensSelectionLabel = "No lenses";
+
+  if (lensEntryTypes.length === 0) {
+    lensSelectionLabel = "No calendar-ready activities";
+  } else if (selectedLensEntryTypes.length === 1) {
+    lensSelectionLabel = selectedLensEntryTypes[0].name;
+  } else if (allLensesSelected) {
+    lensSelectionLabel = "All lenses";
+  } else if (selectedLensEntryTypes.length === 2) {
+    lensSelectionLabel =
+      `${selectedLensEntryTypes[0].name} + ` + selectedLensEntryTypes[1].name;
+  } else if (selectedLensEntryTypes.length > 2) {
+    lensSelectionLabel = `${selectedLensEntryTypes.length} lenses`;
+  }
+
+  function updateLensSelection(entryTypeIds: string[]) {
+    const validEntryTypeIds = Array.from(
+      new Set(
+        entryTypeIds.filter((entryTypeId) =>
+          lensEntryTypes.some((entryType) => entryType.id === entryTypeId),
+        ),
+      ),
+    );
+
+    setSelectedLensEntryTypeIds(validEntryTypeIds);
+    clearSelection();
+
+    void saveCalendarLensEntryTypeIds(validEntryTypeIds);
+  }
+
+  function toggleLensEntryType(entryTypeId: string) {
+    const currentEntryTypeIds = selectedLensEntryTypes.map(
+      (entryType) => entryType.id,
+    );
+
+    const nextEntryTypeIds = currentEntryTypeIds.includes(entryTypeId)
+      ? currentEntryTypeIds.filter((currentId) => currentId !== entryTypeId)
+      : [...currentEntryTypeIds, entryTypeId];
+
+    updateLensSelection(nextEntryTypeIds);
+  }
+
+  function toggleAllLenses() {
+    updateLensSelection(
+      allLensesSelected ? [] : lensEntryTypes.map((entryType) => entryType.id),
+    );
+  }
+
+  function closeLensPicker() {
+    if (lensPickerRef.current) {
+      lensPickerRef.current.open = false;
+    }
+  }
 
   const lensEntriesByDate = useMemo(() => {
-    const grouped = new Map<string, DaywardenEntry[]>();
+    const grouped = new Map<string, Map<string, DaywardenEntry[]>>();
 
-    if (!activeLensEntryTypeId) {
+    if (selectedLensEntryTypeIdSet.size === 0) {
       return grouped;
     }
 
     for (const entry of entries) {
-      if (entry.entryTypeId !== activeLensEntryTypeId) {
+      if (!selectedLensEntryTypeIdSet.has(entry.entryTypeId)) {
         continue;
       }
 
       const dateKey = getLocalDateKey(entry.createdAt);
 
-      const current = grouped.get(dateKey) ?? [];
+      let entriesByType = grouped.get(dateKey);
+
+      if (!entriesByType) {
+        entriesByType = new Map<string, DaywardenEntry[]>();
+
+        grouped.set(dateKey, entriesByType);
+      }
+
+      const current = entriesByType.get(entry.entryTypeId) ?? [];
 
       current.push(entry);
 
-      grouped.set(dateKey, current);
+      entriesByType.set(entry.entryTypeId, current);
     }
 
     return grouped;
-  }, [entries, activeLensEntryTypeId]);
+  }, [entries, selectedLensEntryTypeIdSet]);
 
   const visibleMonth = parseMonthKey(visibleMonthKey);
 
@@ -747,16 +812,41 @@ function CalendarView({
       );
   }, [entries, selectedDates, selectedDateSet]);
 
-  const selectedLensEntries = useMemo(
-    () =>
-      activeLensEntryTypeId
-        ? selectedEntries.filter(
-            (entry) =>
-              entry.entryTypeId === activeLensEntryTypeId,
-          )
-        : [],
-    [selectedEntries, activeLensEntryTypeId],
-  );
+  const selectedLensEntriesByType = useMemo(() => {
+    const grouped = new Map<string, DaywardenEntry[]>();
+
+    for (const entry of selectedEntries) {
+      if (!selectedLensEntryTypeIdSet.has(entry.entryTypeId)) {
+        continue;
+      }
+
+      const current = grouped.get(entry.entryTypeId) ?? [];
+
+      current.push(entry);
+
+      grouped.set(entry.entryTypeId, current);
+    }
+
+    return grouped;
+  }, [selectedEntries, selectedLensEntryTypeIdSet]);
+
+  const reviewLensEntryTypes = useMemo(() => {
+    /*
+     * For one Lens, preserve the existing empty-state
+     * message if nothing was recorded.
+     *
+     * With several Lenses selected, only show full
+     * review blocks for Lenses that actually have data.
+     */
+    if (selectedLensEntryTypes.length <= 1) {
+      return selectedLensEntryTypes;
+    }
+
+    return selectedLensEntryTypes.filter(
+      (entryType) =>
+        (selectedLensEntriesByType.get(entryType.id)?.length ?? 0) > 0,
+    );
+  }, [selectedLensEntryTypes, selectedLensEntriesByType]);
 
   const summaries = useMemo(
     () => buildEntryTypeSummaries(selectedEntries, entryTypes),
@@ -850,24 +940,10 @@ function CalendarView({
   }
 
   function getVisibleMonthDateKeys(): string[] {
-    const daysInMonth = new Date(
-      year,
-      month + 1,
-      0,
-      12,
-    ).getDate();
+    const daysInMonth = new Date(year, month + 1, 0, 12).getDate();
 
-    return Array.from(
-      { length: daysInMonth },
-      (_, index) =>
-        getLocalDateKey(
-          new Date(
-            year,
-            month,
-            index + 1,
-            12,
-          ),
-        ),
+    return Array.from({ length: daysInMonth }, (_, index) =>
+      getLocalDateKey(new Date(year, month, index + 1, 12)),
     );
   }
 
@@ -876,9 +952,7 @@ function CalendarView({
       return;
     }
 
-    setSelectedDates(
-      getVisibleMonthDateKeys(),
-    );
+    setSelectedDates(getVisibleMonthDateKeys());
 
     setSelectionKind("month");
 
@@ -981,9 +1055,7 @@ function CalendarView({
       sheetSubtitle = `${formatShortDate(
         sortedSelectedDates[0],
       )} – ${formatShortDate(
-        sortedSelectedDates[
-          sortedSelectedDates.length - 1
-        ],
+        sortedSelectedDates[sortedSelectedDates.length - 1],
       )}`;
     }
   }
@@ -1054,48 +1126,78 @@ function CalendarView({
       </div>
 
       <div className="calendar-lens-control">
-        <label htmlFor="calendar-lens-select">
-          <span>Lens</span>
+        <div className="calendar-lens-control-row">
+          <details className="calendar-lens-picker" ref={lensPickerRef}>
+            <summary>
+              <span className="calendar-lens-picker-name">Lenses</span>
 
-          <select
-            id="calendar-lens-select"
-            value={activeLensEntryTypeId}
-            disabled={lensEntryTypes.length === 0}
-            onChange={(event) => {
-              const entryTypeId =
-                event.target.value;
+              <strong>{lensSelectionLabel}</strong>
 
-              setSelectedLensEntryTypeId(
-                entryTypeId,
-              );
+              <span className="calendar-lens-picker-chevron" aria-hidden="true">
+                ⌄
+              </span>
+            </summary>
 
-              clearSelection();
+            <div className="calendar-lens-options">
+              {lensEntryTypes.length === 0 ? (
+                <p className="calendar-lens-empty">
+                  No activities currently have fields that can appear in
+                  Calendar.
+                </p>
+              ) : (
+                <>
+                  <label className="calendar-lens-option calendar-lens-option-all">
+                    <input
+                      type="checkbox"
+                      checked={allLensesSelected}
+                      ref={(input) => {
+                        if (input) {
+                          input.indeterminate = someLensesSelected;
+                        }
+                      }}
+                      onChange={toggleAllLenses}
+                    />
 
-              void saveCalendarLensEntryTypeId(
-                entryTypeId,
-              );
-            }}
+                    <span>All lenses</span>
+                  </label>
+
+                  <div className="calendar-lens-divider" />
+
+                  {lensEntryTypes.map((entryType) => (
+                    <label className="calendar-lens-option" key={entryType.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLensEntryTypeIds.includes(
+                          entryType.id,
+                        )}
+                        onChange={() => toggleLensEntryType(entryType.id)}
+                      />
+
+                      <span>{entryType.name}</span>
+                    </label>
+                  ))}
+
+                  <button
+                    className="calendar-lens-done"
+                    type="button"
+                    onClick={closeLensPicker}
+                  >
+                    Done
+                  </button>
+                </>
+              )}
+            </div>
+          </details>
+
+          <button
+            className="calendar-help-button"
+            type="button"
+            aria-label="How to use Calendar"
+            onClick={() => setCalendarHelpOpen(true)}
           >
-            {lensEntryTypes.length === 0 ? (
-              <option value="">
-                No calendar-ready activities
-              </option>
-            ) : (
-              lensEntryTypes.map((entryType) => (
-                <option
-                  key={entryType.id}
-                  value={entryType.id}
-                >
-                  {entryType.name}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
-
-        <p>
-          Each day summarizes the selected activity.
-        </p>
+            ?
+          </button>
+        </div>
       </div>
 
       {multiSelect && (
@@ -1124,10 +1226,6 @@ function CalendarView({
           </button>
         </div>
       )}
-
-      <div className="calendar-help">
-        Tap a day, week, or month to review it. Long-press to select several days.
-      </div>
 
       <section className="calendar-month">
         <div className="calendar-week-header">
@@ -1182,6 +1280,13 @@ function CalendarView({
                     .filter(Boolean)
                     .join(" ");
 
+                  const dayLensEntries = lensEntriesByDate.get(dateKey);
+
+                  const dayLensEntryTypes = selectedLensEntryTypes.filter(
+                    (entryType) =>
+                      (dayLensEntries?.get(entryType.id)?.length ?? 0) > 0,
+                  );
+
                   return (
                     <LongPressButton
                       key={dateKey}
@@ -1202,13 +1307,49 @@ function CalendarView({
                         {day.getDate()}
                       </span>
 
-                      {isCurrentMonth && activeLensEntryType && (
-                        <CalendarLensVisualization
-                          entryType={activeLensEntryType}
-                          entries={lensEntriesByDate.get(dateKey) ?? []}
-                          compact
-                        />
-                      )}
+                      {isCurrentMonth &&
+                        selectedLensEntryTypes.length === 1 && (
+                          <CalendarLensVisualization
+                            entryType={selectedLensEntryTypes[0]}
+                            entries={
+                              dayLensEntries?.get(
+                                selectedLensEntryTypes[0].id,
+                              ) ?? []
+                            }
+                            compact
+                          />
+                        )}
+
+                      {isCurrentMonth &&
+                        selectedLensEntryTypes.length > 1 &&
+                        dayLensEntryTypes.length > 0 && (
+                          <div className="calendar-multi-lens-metrics">
+                            {dayLensEntryTypes
+                              .slice(0, 3)
+                              .map((entryType) => (
+                                <div
+                                  className="calendar-multi-lens-item"
+                                  key={entryType.id}
+                                  title={entryType.name}
+                                >
+                                  <CalendarLensVisualization
+                                    entryType={entryType}
+                                    entries={
+                                      dayLensEntries?.get(entryType.id) ?? []
+                                    }
+                                    compact
+                                    maxMetrics={1}
+                                  />
+                                </div>
+                              ))}
+
+                            {dayLensEntryTypes.length > 3 && (
+                              <span className="calendar-multi-lens-more">
+                                +{dayLensEntryTypes.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                     </LongPressButton>
                   );
                 })}
@@ -1217,6 +1358,30 @@ function CalendarView({
           })}
         </div>
       </section>
+
+      {calendarHelpOpen && (
+        <ModalSheet
+          open={calendarHelpOpen}
+          ariaLabel="How to use Calendar"
+          onClose={() => setCalendarHelpOpen(false)}
+        >
+          <div className="calendar-help-sheet">
+            <h2>Calendar</h2>
+
+            <p>Tap a day, week number, or month name to review that period.</p>
+
+            <p>
+              Long-press a day or week number to select and compare several
+              days.
+            </p>
+
+            <p>
+              Use Lenses to choose which activity summaries appear inside the
+              calendar.
+            </p>
+          </div>
+        </ModalSheet>
+      )}
 
       {sheetOpen && (
         <div className="sheet-backdrop" onClick={closeSheet}>
@@ -1262,12 +1427,15 @@ function CalendarView({
             </div>
 
             {selectedDates.length > 0 &&
-              activeLensEntryType && (
+              reviewLensEntryTypes.map((entryType) => (
                 <CalendarLensVisualization
-                  entryType={activeLensEntryType}
-                  entries={selectedLensEntries}
+                  key={entryType.id}
+                  entryType={entryType}
+                  entries={
+                    selectedLensEntriesByType.get(entryType.id) ?? []
+                  }
                 />
-              )}
+              ))}
 
             {selectedEntries.length === 0 && (
               <p className="sheet-empty-state">

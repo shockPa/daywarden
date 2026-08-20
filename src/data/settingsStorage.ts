@@ -6,8 +6,9 @@ const THEME_KEY = "themeMode";
 
 const LAST_UPDATE_CHECK_KEY = "lastUpdateCheck";
 
-const CALENDAR_LENS_ENTRY_TYPE_KEY =
-  "calendarLensEntryTypeId";
+const CALENDAR_LENS_ENTRY_TYPE_KEY = "calendarLensEntryTypeId";
+
+const CALENDAR_LENS_ENTRY_TYPE_IDS_KEY = "calendarLensEntryTypeIds";
 
 export async function getThemeMode(): Promise<ThemeMode> {
   const database = await getDaywardenDb();
@@ -41,30 +42,48 @@ export async function saveLastUpdateCheck(value: string): Promise<void> {
   await database.put("settings", value, LAST_UPDATE_CHECK_KEY);
 }
 
-
-export async function getCalendarLensEntryTypeId(): Promise<
-  string | null
-> {
+export async function getCalendarLensEntryTypeIds(): Promise<string[] | null> {
   const database = await getDaywardenDb();
 
   const value = await database.get(
     "settings",
+    CALENDAR_LENS_ENTRY_TYPE_IDS_KEY,
+  );
+
+  if (Array.isArray(value)) {
+    const stringValues = value.filter(
+      (item): item is string => typeof item === "string",
+    );
+
+    if (stringValues.length === value.length) {
+      return stringValues;
+    }
+  }
+
+  /*
+   * Backward compatibility:
+   * older Daywarden versions stored one Lens ID.
+   */
+  const legacyValue = await database.get(
+    "settings",
     CALENDAR_LENS_ENTRY_TYPE_KEY,
   );
 
-  return typeof value === "string"
-    ? value
-    : null;
+  if (typeof legacyValue === "string" && legacyValue) {
+    return [legacyValue];
+  }
+
+  return null;
 }
 
-export async function saveCalendarLensEntryTypeId(
-  entryTypeId: string,
+export async function saveCalendarLensEntryTypeIds(
+  entryTypeIds: string[],
 ): Promise<void> {
   const database = await getDaywardenDb();
 
   await database.put(
     "settings",
-    entryTypeId,
-    CALENDAR_LENS_ENTRY_TYPE_KEY,
+    Array.from(new Set(entryTypeIds)),
+    CALENDAR_LENS_ENTRY_TYPE_IDS_KEY,
   );
 }

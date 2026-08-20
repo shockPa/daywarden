@@ -702,15 +702,15 @@ function App() {
 
         {activeView === "today" && <p className="date">{today}</p>}
 
-        <h1>
-          {activeView === "today" && "What did you do today?"}
+        {activeView !== "calendar" && (
+          <h1>
+            {activeView === "today" && "What did you do today?"}
 
-          {activeView === "log" && "Log"}
+            {activeView === "log" && "Log"}
 
-          {activeView === "calendar" && "Calendar"}
-
-          {activeView === "library" && "Library"}
-        </h1>
+            {activeView === "library" && "Library"}
+          </h1>
+        )}
       </header>
 
       {settingsOpen ? (

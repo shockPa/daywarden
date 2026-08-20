@@ -21,7 +21,8 @@ export type DaywardenSettingValue =
   | EntryTypePreferences
   | ThemeMode
   | boolean
-  | string;
+  | string
+  | string[];
 
 interface DaywardenDatabase extends DBSchema {
   entries: {
