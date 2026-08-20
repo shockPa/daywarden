@@ -20,20 +20,33 @@
 }
 
 :root[data-theme="dark"] {
-  --dw-brand-ink: #d9e8fa;
-  --dw-brand-soft: rgba(217, 232, 250, 0.08);
+  --dw-brand-ink: #c8d5df;
+  --dw-brand-soft: rgba(200, 213, 223, 0.08);
+
+  --dw-decor-coral: #d77b70;
+  --dw-decor-orange: #d79a66;
+  --dw-decor-yellow: #c9aa59;
+  --dw-decor-green: #7ea979;
+  --dw-decor-blue: #74a6b8;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"] {
-    --dw-brand-ink: #d9e8fa;
-    --dw-brand-soft: rgba(217, 232, 250, 0.08);
+    --dw-brand-ink: #c8d5df;
+    --dw-brand-soft: rgba(200, 213, 223, 0.08);
+
+    --dw-decor-coral: #d77b70;
+    --dw-decor-orange: #d79a66;
+    --dw-decor-yellow: #c9aa59;
+    --dw-decor-green: #7ea979;
+    --dw-decor-blue: #74a6b8;
   }
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -1397,46 +1410,124 @@ select.field-input {
 
 :root,
 :root[data-theme="light"] {
+  color-scheme: light;
+
   --dw-background: #f4f4f1;
+
   --dw-surface: #ffffff;
   --dw-surface-soft: #fafaf8;
+  --dw-surface-raised: #ffffff;
+
+  --dw-hover: #efefeb;
+  --dw-hover-strong: #e7e7e1;
 
   --dw-text: #222222;
-  --dw-muted: #777777;
+  --dw-text-soft: #5f5f5a;
+  --dw-muted: #777772;
 
   --dw-border: #e2e2dd;
+  --dw-border-strong: #c9c9c3;
 
   --dw-accent: #222222;
   --dw-accent-text: #ffffff;
+
+  --dw-selected: #222222;
+  --dw-selected-text: #ffffff;
+
+  --dw-focus: #56717d;
+
+  --dw-danger: #9b4d4d;
+  --dw-danger-soft: rgba(155, 77, 77, 0.08);
+
+  --dw-success: #4f855a;
+
+  --dw-overlay: rgba(0, 0, 0, 0.38);
+  --dw-shadow: rgba(0, 0, 0, 0.16);
+
+  --dw-timer-surface: rgba(111, 79, 170, 0.1);
+  --dw-timer-hover: rgba(111, 79, 170, 0.16);
+  --dw-timer-border: rgba(111, 79, 170, 0.35);
 }
 
 :root[data-theme="dark"] {
-  --dw-background: #151515;
-  --dw-surface: #202020;
-  --dw-surface-soft: #282828;
+  color-scheme: dark;
 
-  --dw-text: #eeeeea;
-  --dw-muted: #aaaaa4;
+  --dw-background: #16181b;
 
-  --dw-border: #383834;
+  --dw-surface: #1e2125;
+  --dw-surface-soft: #25292e;
+  --dw-surface-raised: #2b3036;
 
-  --dw-accent: #eeeeea;
-  --dw-accent-text: #171717;
+  --dw-hover: #2d3238;
+  --dw-hover-strong: #353b42;
+
+  --dw-text: #e8e7e2;
+  --dw-text-soft: #c5c5c1;
+  --dw-muted: #9fa3a6;
+
+  --dw-border: #353b42;
+  --dw-border-strong: #49515a;
+
+  --dw-accent: #40515d;
+  --dw-accent-text: #f0efea;
+
+  --dw-selected: #394953;
+  --dw-selected-text: #f0efea;
+
+  --dw-focus: #7895a5;
+
+  --dw-danger: #d08b86;
+  --dw-danger-soft: rgba(208, 139, 134, 0.1);
+
+  --dw-success: #86ad8d;
+
+  --dw-overlay: rgba(0, 0, 0, 0.54);
+  --dw-shadow: rgba(0, 0, 0, 0.34);
+
+  --dw-timer-surface: rgba(130, 119, 160, 0.1);
+  --dw-timer-hover: rgba(130, 119, 160, 0.15);
+  --dw-timer-border: rgba(150, 140, 178, 0.24);
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"] {
-    --dw-background: #151515;
-    --dw-surface: #202020;
-    --dw-surface-soft: #282828;
+    color-scheme: dark;
 
-    --dw-text: #eeeeea;
-    --dw-muted: #aaaaa4;
+    --dw-background: #16181b;
 
-    --dw-border: #383834;
+    --dw-surface: #1e2125;
+    --dw-surface-soft: #25292e;
+    --dw-surface-raised: #2b3036;
 
-    --dw-accent: #eeeeea;
-    --dw-accent-text: #171717;
+    --dw-hover: #2d3238;
+    --dw-hover-strong: #353b42;
+
+    --dw-text: #e8e7e2;
+    --dw-text-soft: #c5c5c1;
+    --dw-muted: #9fa3a6;
+
+    --dw-border: #353b42;
+    --dw-border-strong: #49515a;
+
+    --dw-accent: #40515d;
+    --dw-accent-text: #f0efea;
+
+    --dw-selected: #394953;
+    --dw-selected-text: #f0efea;
+
+    --dw-focus: #7895a5;
+
+    --dw-danger: #d08b86;
+    --dw-danger-soft: rgba(208, 139, 134, 0.1);
+
+    --dw-success: #86ad8d;
+
+    --dw-overlay: rgba(0, 0, 0, 0.54);
+    --dw-shadow: rgba(0, 0, 0, 0.34);
+
+    --dw-timer-surface: rgba(130, 119, 160, 0.1);
+    --dw-timer-hover: rgba(130, 119, 160, 0.15);
+    --dw-timer-border: rgba(150, 140, 178, 0.24);
   }
 }
 
@@ -1943,11 +2034,9 @@ body,
 }
 
 :root[data-theme="dark"] {
-  --dw-library-surface: rgba(184, 141, 100, 0.12);
-
-  --dw-library-border: rgba(205, 163, 122, 0.28);
-
-  --dw-library-accent: #d0a77f;
+  ---dw-library-surface: rgba(178, 139, 103, 0.1);
+  --dw-library-border: rgba(195, 154, 118, 0.2);
+  --dw-library-accent: #c59d7a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -3308,4 +3397,279 @@ body,
   .calendar-add-entry-list {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================================================
+   App-wide theme normalization
+   ========================================================= */
+
+body,
+button,
+input,
+textarea,
+select {
+  color: var(--dw-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--dw-muted);
+
+  opacity: 0.8;
+}
+
+/* Surfaces */
+
+.card,
+.saved-entry-card,
+.navigation,
+.calendar-selection-bar,
+.period-summary-group,
+.settings-section,
+.manager-actions button,
+.removed-types button,
+.entry-actions button,
+.add-field-button,
+.calendar-month-navigation > button {
+  border-color: var(--dw-border);
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+}
+
+.field-input,
+.field-textarea,
+.custom-field-card,
+.entry-type-button,
+.manager-row {
+  border-color: var(--dw-border);
+
+  background: var(--dw-surface-soft);
+
+  color: var(--dw-text);
+}
+
+.close-button,
+.selection-clear-button {
+  background: var(--dw-surface-soft);
+
+  color: var(--dw-text);
+}
+
+/* Secondary text */
+
+.date,
+.scale-labels,
+.time-range label span,
+.duration-input label span,
+.custom-fields-header p,
+.no-fields,
+.field-label,
+.remove-field-button,
+.development-note,
+.empty-state,
+.saved-entry-header time,
+.entry-value span,
+.entry-list span,
+.manager-description,
+.manager-name span,
+.timeline-day-heading span,
+.timeline-empty,
+.placeholder-page,
+.calendar-today-button,
+.calendar-week-header,
+.week-number,
+.summary-row span,
+.period-summary-title span,
+.create-entry-type {
+  color: var(--dw-muted);
+}
+
+.timeline-empty h2 {
+  color: var(--dw-text);
+}
+
+/* Dividers */
+
+.entry-value,
+.entry-actions,
+.timeline-day-heading,
+.removed-types,
+.summary-row {
+  border-color: var(--dw-border);
+}
+
+/* Soft hover states */
+
+.settings-button:hover,
+.close-button:hover,
+.add-field-button:hover,
+.manager-actions button:hover,
+.removed-types button:hover,
+.entry-actions button:hover,
+.calendar-month-navigation > button:not(:disabled):hover,
+.selection-clear-button:hover,
+.theme-option:hover,
+.settings-action:hover,
+.modal-sheet-close:hover {
+  background: var(--dw-hover);
+
+  color: var(--dw-text);
+
+  border-color: var(--dw-border-strong);
+}
+
+.entry-type-button:not(.timer-entry-type):hover {
+  border-color: var(--dw-border-strong);
+
+  background: var(--dw-hover);
+}
+
+/*
+ * Calendar used to inherit #e9e9e5 here,
+ * which becomes extremely bright in dark mode.
+ */
+.calendar-day:hover {
+  border-color: var(--dw-border-strong);
+
+  background: var(--dw-hover);
+}
+
+.week-number:hover {
+  background: var(--dw-hover);
+
+  color: var(--dw-text);
+}
+
+/* Selected / primary controls */
+
+.entry-type-button.selected,
+.selection-review-button,
+.active-save,
+.theme-option.selected {
+  border-color: var(--dw-accent);
+
+  background: var(--dw-accent);
+
+  color: var(--dw-accent-text);
+}
+
+.calendar-day.selected,
+.calendar-day.selected:hover {
+  border-color: var(--dw-border-strong);
+
+  background: var(--dw-selected);
+
+  color: var(--dw-selected-text);
+}
+
+.calendar-day.selected.outside-month {
+  color: var(--dw-selected-text);
+}
+
+.calendar-day.today {
+  outline-color: var(--dw-border-strong);
+}
+
+/* Focus */
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--dw-focus);
+
+  outline-offset: 2px;
+}
+
+.field-input:focus,
+.field-textarea:focus {
+  outline-color: var(--dw-focus);
+}
+
+/* Period summaries */
+
+.period-summary-group {
+  background: var(--dw-surface);
+}
+
+.period-summary-title {
+  background: var(--dw-surface-soft);
+}
+
+/* Timer surfaces */
+
+.entry-type-button.timer-entry-type {
+  border-color: var(--dw-timer-border);
+
+  background: var(--dw-timer-surface);
+}
+
+.entry-type-button.timer-entry-type:hover {
+  border-color: var(--dw-timer-border);
+
+  background: var(--dw-timer-hover);
+}
+
+.active-timers {
+  border-color: var(--dw-timer-border);
+
+  background: var(--dw-timer-surface);
+}
+
+/*
+ * Override the older explicit dark timer
+ * border, which is currently quite bright.
+ */
+:root[data-theme="dark"] .entry-type-button.timer-entry-type {
+  border-color: var(--dw-timer-border);
+
+  background: var(--dw-timer-surface);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] .entry-type-button.timer-entry-type {
+    border-color: var(--dw-timer-border);
+
+    background: var(--dw-timer-surface);
+  }
+}
+
+/* Status / destructive */
+
+.form-error,
+.manager-actions .remove-type,
+.entry-actions .delete-entry-button {
+  color: var(--dw-danger);
+}
+
+.destructive-action {
+  border-color: var(--dw-danger);
+}
+
+.library-permanent-delete {
+  border-color: var(--dw-danger) !important;
+}
+
+.status-good {
+  color: var(--dw-success);
+}
+
+/* Modal layers */
+
+.sheet-backdrop {
+  background: var(--dw-overlay);
+}
+
+.modal-sheet-backdrop::backdrop {
+  background: var(--dw-overlay);
+}
+
+.calendar-sheet {
+  box-shadow: 0 -8px 40px var(--dw-shadow);
+}
+
+.modal-sheet {
+  box-shadow: 0 24px 70px var(--dw-shadow);
 }

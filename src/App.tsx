@@ -736,8 +736,6 @@ function App() {
 
         {activeView !== "calendar" && (
           <h1>
-            {activeView === "today" && "What did you do today?"}
-
             {activeView === "log" && "Log"}
 
             {activeView === "library" && "Library"}
