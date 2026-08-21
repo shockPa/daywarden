@@ -4,6 +4,7 @@ export const builtInEntryTypes: EntryTypeDefinition[] = [
   {
     id: "note",
     name: "Note",
+    iconId: "note",
     builtIn: true,
 
     fields: [
@@ -21,6 +22,7 @@ export const builtInEntryTypes: EntryTypeDefinition[] = [
   {
     id: "work",
     name: "Work",
+    iconId: "briefcase",
     builtIn: true,
 
     fields: [
@@ -54,6 +56,7 @@ export const builtInEntryTypes: EntryTypeDefinition[] = [
   {
     id: "shopping-list",
     name: "Shopping List",
+    iconId: "shopping",
     builtIn: true,
 
     fields: [
@@ -71,6 +74,7 @@ export const builtInEntryTypes: EntryTypeDefinition[] = [
   {
     id: "workout",
     name: "Workout",
+    iconId: "dumbbell",
     builtIn: true,
 
     fields: [
@@ -129,6 +133,7 @@ export const builtInEntryTypes: EntryTypeDefinition[] = [
   {
     id: "headache",
     name: "Headache",
+    iconId: "headache",
     builtIn: true,
 
     fields: [

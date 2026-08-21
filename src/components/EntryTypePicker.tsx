@@ -1,3 +1,5 @@
+import ActivityIcon from "./ActivityIcon";
+
 import type { EntryTypeDefinition } from "../types/entryType";
 
 interface EntryTypePickerProps {
@@ -33,6 +35,8 @@ function EntryTypePicker({
           hasTimer ? "timer-entry-type" : "",
 
           timerRunning ? "timer-running" : "",
+
+          entryType.iconId ? "has-activity-art" : "",
         ]
           .filter(Boolean)
           .join(" ");
@@ -45,16 +49,25 @@ function EntryTypePicker({
             disabled={timerRunning}
             onClick={() => onSelect(entryType)}
           >
-            {hasTimer && (
-              <span className="timer-entry-icon" aria-hidden="true">
-                ⏱
-              </span>
-            )}
+            <span className="entry-type-button-copy">
+              {hasTimer && (
+                <span className="timer-entry-icon" aria-hidden="true">
+                  ⏱
+                </span>
+              )}
 
-            <span>{entryType.name}</span>
+              <span>{entryType.name}</span>
 
-            {timerRunning && (
-              <span className="timer-running-label">Running</span>
+              {timerRunning && (
+                <span className="timer-running-label">Running</span>
+              )}
+            </span>
+
+            {entryType.iconId && (
+              <ActivityIcon
+                iconId={entryType.iconId}
+                className="activity-icon-art"
+              />
             )}
           </button>
         );

@@ -122,6 +122,7 @@ function App() {
   const [preferences, setPreferences] = useState<EntryTypePreferences>({
     order: [],
     hiddenIds: [],
+    iconOverrides: {},
   });
 
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
@@ -379,6 +380,22 @@ function App() {
     (entryType) => !preferences.hiddenIds.includes(entryType.id),
   );
 
+  const todayEntryTypes = visibleEntryTypes.map((entryType) => {
+    const hasIconOverride = Object.prototype.hasOwnProperty.call(
+      preferences.iconOverrides,
+      entryType.id,
+    );
+
+    if (!hasIconOverride) {
+      return entryType;
+    }
+
+    return {
+      ...entryType,
+      iconId: preferences.iconOverrides[entryType.id] ?? undefined,
+    };
+  });
+
   const calendarAddableEntryTypes = visibleEntryTypes.filter(
     (entryType) => !entryType.fields.some((field) => field.type === "timer"),
   );
@@ -633,6 +650,21 @@ function App() {
     await saveEntryTypePreferences(updatedPreferences);
   }
 
+  async function handleIconChange(entryTypeId: string, iconId: string | null) {
+    const updatedPreferences = {
+      ...preferences,
+
+      iconOverrides: {
+        ...preferences.iconOverrides,
+        [entryTypeId]: iconId,
+      },
+    };
+
+    setPreferences(updatedPreferences);
+
+    await saveEntryTypePreferences(updatedPreferences);
+  }
+
   async function handleMove(entryTypeId: string, direction: -1 | 1) {
     const ids = orderedEntryTypes.map((entryType) => entryType.id);
 
@@ -775,8 +807,10 @@ function App() {
           entryTypes={orderedEntryTypes}
           removedCustomEntryTypes={removedCustomEntryTypes}
           hiddenIds={preferences.hiddenIds}
+          iconOverrides={preferences.iconOverrides}
           onToggleHidden={handleToggleHidden}
           onMove={handleMove}
+          onIconChange={handleIconChange}
           onRemove={handleRemove}
           onRestore={handleRestore}
           onClose={() => {
@@ -794,7 +828,7 @@ function App() {
                 onStopAll={handleStopAllTimers}
               />
               <EntryTypePicker
-                entryTypes={visibleEntryTypes}
+                entryTypes={todayEntryTypes}
                 selectedEntryTypeId={selectedEntryType?.id ?? null}
                 activeTimerEntryTypeIds={activeTimers.map(
                   (timer) => timer.entryTypeId,

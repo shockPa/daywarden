@@ -93,4 +93,11 @@ export type EntryValues = Record<string, EntryFieldValue>;
 export interface EntryTypePreferences {
   order: string[];
   hiddenIds: string[];
+
+  /*
+   * Missing key: use the Entry Type's bundled default icon.
+   * String: use that icon.
+   * null: explicitly show no icon.
+   */
+  iconOverrides: Record<string, string | null>;
 }

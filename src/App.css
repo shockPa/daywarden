@@ -4161,3 +4161,189 @@ select:focus-visible {
 
   cursor: pointer;
 }
+
+/* Activity artwork */
+
+.entry-type-button {
+  position: relative;
+
+  overflow: hidden;
+
+  isolation: isolate;
+}
+
+.entry-type-button-copy {
+  position: relative;
+
+  z-index: 2;
+
+  display: inline-flex;
+  align-items: center;
+
+  max-width: 62%;
+}
+
+.activity-icon-art {
+  position: absolute;
+
+  top: 50%;
+  left: 71%;
+
+  z-index: 1;
+
+  width: 84px;
+  height: 84px;
+
+  color: currentColor;
+
+  opacity: 0.2;
+
+  pointer-events: none;
+
+  transform: translate(-50%, -50%);
+}
+
+.entry-type-button:hover .activity-icon-art {
+  opacity: 0.27;
+}
+
+.entry-type-button.selected .activity-icon-art {
+  opacity: 0.24;
+}
+
+.entry-type-button.timer-running .activity-icon-art {
+  opacity: 0.16;
+}
+
+@media (max-width: 420px) {
+  .activity-icon-art {
+    left: 74%;
+
+    width: 88px;
+    height: 88px;
+  }
+}
+
+/* Activity icon chooser */
+
+.manager-icon-button {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 5px;
+}
+
+.manager-icon-preview {
+  display: grid;
+
+  width: 18px;
+  height: 18px;
+
+  place-items: center;
+}
+
+.manager-icon-preview svg {
+  width: 18px;
+  height: 18px;
+}
+
+.manager-empty-icon {
+  color: var(--dw-muted);
+
+  line-height: 1;
+}
+
+.activity-icon-chooser {
+  display: grid;
+
+  gap: 20px;
+}
+
+.activity-icon-chooser-heading h2 {
+  margin: 0;
+
+  font-size: 1.25rem;
+}
+
+.activity-icon-chooser-heading p {
+  margin: 5px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.activity-icon-grid {
+  display: grid;
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  gap: 9px;
+}
+
+.activity-icon-option {
+  display: grid;
+
+  min-width: 0;
+  min-height: 82px;
+
+  place-items: center;
+
+  gap: 6px;
+
+  padding: 10px 6px;
+
+  border: 1px solid var(--dw-border);
+  border-radius: 12px;
+
+  background: var(--dw-surface-soft);
+  color: var(--dw-text);
+}
+
+.activity-icon-option:hover {
+  border-color: var(--dw-muted);
+}
+
+.activity-icon-option.selected {
+  border-color: var(--dw-accent);
+
+  outline: 2px solid var(--dw-accent);
+  outline-offset: 1px;
+}
+
+.activity-icon-option-art {
+  width: 32px;
+  height: 32px;
+
+  color: currentColor;
+}
+
+.activity-icon-option-empty {
+  display: grid;
+
+  place-items: center;
+
+  color: var(--dw-muted);
+
+  font-size: 1.5rem;
+}
+
+.activity-icon-option > span:last-child {
+  min-width: 0;
+
+  overflow: hidden;
+
+  font-size: 0.68rem;
+  font-weight: 600;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .activity-icon-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
