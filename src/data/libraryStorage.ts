@@ -2,6 +2,7 @@ import { getDaywardenDb } from "./db";
 
 import {
   DEFAULT_LIBRARY_FOLDER_ID,
+  type LibraryChecklistItem,
   type LibraryFolder,
   type LibraryItem,
   type LibraryListItem,
@@ -201,6 +202,105 @@ export async function createLibraryList(
   return getLibraryItems();
 }
 
+function reconcileChecklistItems(
+  existingItems: LibraryChecklistItem[],
+  lines: string[],
+): LibraryChecklistItem[] {
+  const texts = lines.map((line) => line.trim()).filter(Boolean);
+
+  const usedIds = new Set<string>();
+
+  return texts.map((text, index) => {
+    /*
+     * Prefer an exact text match so moving
+     * an existing checklist item keeps its
+     * checked state.
+     */
+    const exactMatch = existingItems.find(
+      (item) => item.text === text && !usedIds.has(item.id),
+    );
+
+    const samePosition = existingItems[index];
+
+    const reusableItem =
+      exactMatch ??
+      (samePosition && !usedIds.has(samePosition.id)
+        ? samePosition
+        : undefined);
+
+    if (reusableItem) {
+      usedIds.add(reusableItem.id);
+
+      return {
+        ...reusableItem,
+        text,
+      };
+    }
+
+    return {
+      id: createId(),
+      text,
+      checked: false,
+    };
+  });
+}
+
+export async function updateLibraryNote(
+  itemId: string,
+  title: string,
+  content: string,
+): Promise<LibraryItem[]> {
+  const database = await getDaywardenDb();
+
+  const item = await database.get("libraryItems", itemId);
+
+  if (!item || item.type !== "note" || item.archivedAt) {
+    return getLibraryItems();
+  }
+
+  const updated: LibraryNoteItem = {
+    ...item,
+
+    title: title.trim() || "Untitled note",
+
+    content: content.trim(),
+
+    updatedAt: new Date().toISOString(),
+  };
+
+  await database.put("libraryItems", updated);
+
+  return getLibraryItems();
+}
+
+export async function updateLibraryList(
+  itemId: string,
+  title: string,
+  lines: string[],
+): Promise<LibraryItem[]> {
+  const database = await getDaywardenDb();
+
+  const item = await database.get("libraryItems", itemId);
+
+  if (!item || item.type !== "list" || item.archivedAt) {
+    return getLibraryItems();
+  }
+
+  const updated: LibraryListItem = {
+    ...item,
+
+    title: title.trim() || "Untitled list",
+
+    items: reconcileChecklistItems(item.items, lines),
+
+    updatedAt: new Date().toISOString(),
+  };
+
+  await database.put("libraryItems", updated);
+
+  return getLibraryItems();
+}
+
 export async function toggleLibraryChecklistItem(
   libraryItemId: string,
   checklistItemId: string,
@@ -298,6 +398,55 @@ export async function permanentlyDeleteLibraryItem(
   }
 
   await database.delete("libraryItems", itemId);
+
+  return getLibraryItems();
+}
+
+export async function moveLibraryItems(
+  itemIds: string[],
+  folderId: string,
+): Promise<LibraryItem[]> {
+  if (itemIds.length === 0) {
+    return getLibraryItems();
+  }
+
+  const database = await getDaywardenDb();
+
+  const destinationFolder = await database.get("libraryFolders", folderId);
+
+  if (!destinationFolder) {
+    throw new Error("That Library folder could not be found.");
+  }
+
+  const selectedItems = (
+    await Promise.all(
+      itemIds.map((itemId) => database.get("libraryItems", itemId)),
+    )
+  ).filter((item): item is LibraryItem => Boolean(item));
+
+  if (selectedItems.length !== itemIds.length) {
+    throw new Error("One or more selected Library items could not be found.");
+  }
+
+  if (selectedItems.some((item) => Boolean(item.archivedAt))) {
+    throw new Error("Archived Library items cannot be moved.");
+  }
+
+  const now = new Date().toISOString();
+
+  const transaction = database.transaction("libraryItems", "readwrite");
+
+  for (const item of selectedItems) {
+    await transaction.store.put({
+      ...item,
+
+      folderId,
+
+      updatedAt: now,
+    } as LibraryItem);
+  }
+
+  await transaction.done;
 
   return getLibraryItems();
 }

@@ -48,8 +48,10 @@ import SettingsView from "./components/SettingsView";
 
 import {
   getLastUpdateCheck,
+  getShowLibraryOnToday,
   getThemeMode,
   saveLastUpdateCheck,
+  saveShowLibraryOnToday,
   saveThemeMode,
 } from "./data/settingsStorage";
 
@@ -208,6 +210,8 @@ function App() {
 
   const [updateMessage, setUpdateMessage] = useState("");
 
+  const [showLibraryOnToday, setShowLibraryOnToday] = useState(false);
+
   const {
     offlineReady: [offlineReady],
 
@@ -237,6 +241,7 @@ function App() {
         savedThemeMode,
         savedLastUpdateCheck,
         savedActiveTimers,
+        savedShowLibraryOnToday,
       ] = await Promise.all([
         getCustomEntryTypes(),
         getEntryTypePreferences(),
@@ -244,6 +249,7 @@ function App() {
         getThemeMode(),
         getLastUpdateCheck(),
         getActiveTimers(),
+        getShowLibraryOnToday(),
       ]);
 
       setActiveTimers(savedActiveTimers);
@@ -257,6 +263,8 @@ function App() {
       setThemeMode(savedThemeMode);
 
       setLastUpdateCheck(savedLastUpdateCheck);
+
+      setShowLibraryOnToday(savedShowLibraryOnToday);
     }
 
     loadData();
@@ -287,6 +295,12 @@ function App() {
     setThemeMode(mode);
 
     await saveThemeMode(mode);
+  }
+
+  async function handleShowLibraryOnTodayChange(value: boolean) {
+    setShowLibraryOnToday(value);
+
+    await saveShowLibraryOnToday(value);
   }
 
   async function handleCheckForUpdates() {
@@ -734,24 +748,20 @@ function App() {
 
         {activeView === "today" && <p className="date">{today}</p>}
 
-        {activeView !== "calendar" && (
-          <h1>
-            {activeView === "log" && "Log"}
-
-            {activeView === "library" && "Library"}
-          </h1>
-        )}
+        {activeView !== "calendar" && <h1>{activeView === "log" && "Log"}</h1>}
       </header>
 
       {settingsOpen ? (
         <SettingsView
           themeMode={themeMode}
+          showLibraryOnToday={showLibraryOnToday}
           offlineReady={offlineCapable || offlineReady}
           needRefresh={needRefresh}
           checkingForUpdates={checkingForUpdates}
           lastUpdateCheck={lastUpdateCheck}
           updateMessage={updateMessage}
           onThemeChange={handleThemeChange}
+          onShowLibraryOnTodayChange={handleShowLibraryOnTodayChange}
           onCheckForUpdates={handleCheckForUpdates}
           onInstallUpdate={handleInstallUpdate}
           onManageEntryTypes={() => {
@@ -792,22 +802,24 @@ function App() {
                 onSelect={handleSelectEntryType}
               />
 
-              <LibraryQuickCapture
-                mode={libraryCaptureMode}
-                onOpen={(mode) => {
-                  setCreatingEntryType(false);
+              {showLibraryOnToday && (
+                <LibraryQuickCapture
+                  mode={libraryCaptureMode}
+                  onOpen={(mode) => {
+                    setCreatingEntryType(false);
 
-                  setEditingEntry(null);
+                    setEditingEntry(null);
 
-                  setEditingDate("");
-                  setEditingTime("");
+                    setEditingDate("");
+                    setEditingTime("");
 
-                  setSelectedEntryType(null);
+                    setSelectedEntryType(null);
 
-                  setLibraryCaptureMode(mode);
-                }}
-                onClose={() => setLibraryCaptureMode(null)}
-              />
+                    setLibraryCaptureMode(mode);
+                  }}
+                  onClose={() => setLibraryCaptureMode(null)}
+                />
+              )}
 
               <button
                 className="create-entry-type"

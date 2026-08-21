@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 
 import {
   archiveLibraryItem,
@@ -8,10 +13,13 @@ import {
   getLastLibraryFolderId,
   getLibraryFolders,
   getLibraryItems,
+  moveLibraryItems,
   permanentlyDeleteLibraryItem,
   restoreLibraryItem,
   saveLastLibraryFolderId,
   toggleLibraryChecklistItem,
+  updateLibraryList,
+  updateLibraryNote,
 } from "../data/libraryStorage";
 
 import type { LibraryFolder, LibraryItem } from "../types/library";
@@ -27,7 +35,22 @@ import {
 
 type CreateMode = "note" | "list" | "folder" | null;
 
+type LibraryFilter = "all" | "notes" | "lists";
+
+function isInteractiveLibraryTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("button, input, select, textarea, a, label"))
+  );
+}
+
 function LibraryView() {
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  const [editTitle, setEditTitle] = useState("");
+
+  const [editContent, setEditContent] = useState("");
+
   const [folders, setFolders] = useState<LibraryFolder[]>([]);
 
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -35,6 +58,11 @@ function LibraryView() {
   const [selectedFolderId, setSelectedFolderId] = useState("");
 
   const [createMode, setCreateMode] = useState<CreateMode>(null);
+
+  const [libraryFilter, setLibraryFilter] =
+    useState<LibraryFilter>("all");
+
+  const [newPickerOpen, setNewPickerOpen] = useState(false);
 
   const [showArchive, setShowArchive] = useState(false);
 
@@ -48,6 +76,12 @@ function LibraryView() {
 
   const [mergeOpen, setMergeOpen] = useState(false);
 
+  const [moveOpen, setMoveOpen] = useState(false);
+
+  const [moveFolderId, setMoveFolderId] = useState("");
+
+  const [moveError, setMoveError] = useState("");
+
   const [mergeTitle, setMergeTitle] = useState("");
 
   const [mergeFolderId, setMergeFolderId] = useState("");
@@ -59,6 +93,10 @@ function LibraryView() {
 
   const [mergeError, setMergeError] = useState("");
 
+  const editingItem = editingItemId
+    ? (items.find((item) => item.id === editingItemId) ?? null)
+    : null;
+
   const selectedItems = items.filter((item) =>
     selectedItemIds.includes(item.id),
   );
@@ -69,6 +107,15 @@ function LibraryView() {
 
   const canMerge =
     selectedItems.length >= 2 && selectedTypes.size === 1 && !showArchive;
+
+  const moveDestinationFolders = folders.filter(
+    (folder) => folder.id !== selectedFolderId,
+  );
+
+  const canMove =
+    selectedItems.length >= 1 &&
+    !showArchive &&
+    moveDestinationFolders.length > 0;
 
   function enterSelection(itemId: string) {
     setSelectedItemIds([itemId]);
@@ -87,9 +134,45 @@ function LibraryView() {
   function clearSelection() {
     setSelectedItemIds([]);
 
-    setMergeOpen(false);
+    setMoveOpen(false);
+    setMoveError("");
 
+    setMergeOpen(false);
     setMergeError("");
+  }
+
+  function handleOpenMove() {
+    if (!canMove) {
+      return;
+    }
+
+    const firstDestination = moveDestinationFolders[0];
+
+    if (!firstDestination) {
+      return;
+    }
+
+    setMoveFolderId(firstDestination.id);
+    setMoveError("");
+    setMoveOpen(true);
+  }
+
+  async function handleMove() {
+    if (!moveFolderId || selectedItemIds.length === 0) {
+      return;
+    }
+
+    try {
+      setItems(await moveLibraryItems(selectedItemIds, moveFolderId));
+
+      clearSelection();
+    } catch (error) {
+      setMoveError(
+        error instanceof Error
+          ? error.message
+          : "Daywarden couldn't move these items.",
+      );
+    }
   }
 
   function handleOpenMerge() {
@@ -159,7 +242,19 @@ function LibraryView() {
       return Boolean(item.archivedAt);
     }
 
-    return !item.archivedAt && item.folderId === selectedFolderId;
+    if (item.archivedAt || item.folderId !== selectedFolderId) {
+      return false;
+    }
+
+    if (libraryFilter === "notes") {
+      return item.type === "note";
+    }
+
+    if (libraryFilter === "lists") {
+      return item.type === "list";
+    }
+
+    return true;
   });
 
   function resetComposer() {
@@ -167,6 +262,18 @@ function LibraryView() {
     setTitle("");
     setContent("");
     setNewFolderName("");
+  }
+
+  function beginCreate(mode: Exclude<CreateMode, null>) {
+    setCreateMode(mode);
+    setTitle("");
+    setContent("");
+    setNewFolderName("");
+  }
+
+  function closeNewItemFlow() {
+    setNewPickerOpen(false);
+    resetComposer();
   }
 
   async function handleFolderChange(folderId: string) {
@@ -184,7 +291,7 @@ function LibraryView() {
 
     setItems(updated);
 
-    resetComposer();
+    closeNewItemFlow();
   }
 
   async function handleCreateList() {
@@ -198,7 +305,7 @@ function LibraryView() {
 
     setItems(updated);
 
-    resetComposer();
+    closeNewItemFlow();
   }
 
   async function handleCreateFolder() {
@@ -218,12 +325,22 @@ function LibraryView() {
       await saveLastLibraryFolderId(newestFolder.id);
     }
 
-    resetComposer();
+    closeNewItemFlow();
   }
 
   async function handleArchive(itemId: string) {
     setItems(await archiveLibraryItem(itemId));
     clearSelection();
+  }
+
+  async function handleArchiveEditingItem() {
+    if (!editingItem) {
+      return;
+    }
+
+    await handleArchive(editingItem.id);
+
+    closeItemEditor();
   }
 
   async function handleRestore(itemId: string) {
@@ -240,6 +357,78 @@ function LibraryView() {
     }
 
     setItems(await permanentlyDeleteLibraryItem(itemId));
+  }
+
+  function openItemEditor(item: LibraryItem) {
+    if (item.archivedAt) {
+      return;
+    }
+
+    setEditingItemId(item.id);
+    setEditTitle(item.title);
+    setEditContent(
+      item.type === "note"
+        ? item.content
+        : item.items.map((checklistItem) => checklistItem.text).join("\n"),
+    );
+  }
+
+  function closeItemEditor() {
+    setEditingItemId(null);
+    setEditTitle("");
+    setEditContent("");
+  }
+
+  async function handleSaveItemEdit() {
+    if (!editingItem) {
+      return;
+    }
+
+    if (editingItem.type === "note") {
+      if (!editTitle.trim() && !editContent.trim()) {
+        return;
+      }
+
+      setItems(await updateLibraryNote(editingItem.id, editTitle, editContent));
+    } else {
+      const lines = editContent.split("\n");
+
+      if (!editTitle.trim() && lines.every((line) => !line.trim())) {
+        return;
+      }
+
+      setItems(await updateLibraryList(editingItem.id, editTitle, lines));
+    }
+
+    closeItemEditor();
+  }
+
+  function handleCardClick(event: MouseEvent<HTMLElement>, item: LibraryItem) {
+    if (
+      showArchive ||
+      selectionMode ||
+      isInteractiveLibraryTarget(event.target)
+    ) {
+      return;
+    }
+
+    openItemEditor(item);
+  }
+
+  function handleCardKeyDown(
+    event: KeyboardEvent<HTMLElement>,
+    item: LibraryItem,
+  ) {
+    if (showArchive || selectionMode || event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    openItemEditor(item);
   }
 
   return (
@@ -269,7 +458,11 @@ function LibraryView() {
           onClick={() => {
             setShowArchive(!showArchive);
 
+            setLibraryFilter("all");
+            setNewPickerOpen(false);
+
             resetComposer();
+            clearSelection();
           }}
         >
           {showArchive ? "Back to Library" : "Archive"}
@@ -278,85 +471,52 @@ function LibraryView() {
 
       {!showArchive && (
         <>
-          <div className="library-create-actions">
-            <button type="button" onClick={() => setCreateMode("note")}>
-              + Note
-            </button>
+          <div className="library-filter-actions">
+            <div
+              className="library-filter-group"
+              role="group"
+              aria-label="Filter Library items"
+            >
+              <button
+                type="button"
+                className={libraryFilter === "all" ? "active" : ""}
+                aria-pressed={libraryFilter === "all"}
+                onClick={() => setLibraryFilter("all")}
+              >
+                All
+              </button>
 
-            <button type="button" onClick={() => setCreateMode("list")}>
-              + List
-            </button>
+              <button
+                type="button"
+                className={libraryFilter === "notes" ? "active" : ""}
+                aria-pressed={libraryFilter === "notes"}
+                onClick={() => setLibraryFilter("notes")}
+              >
+                Notes
+              </button>
 
-            <button type="button" onClick={() => setCreateMode("folder")}>
-              + Folder
+              <button
+                type="button"
+                className={libraryFilter === "lists" ? "active" : ""}
+                aria-pressed={libraryFilter === "lists"}
+                onClick={() => setLibraryFilter("lists")}
+              >
+                Lists
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="library-new-button"
+              onClick={() => {
+                resetComposer();
+                setNewPickerOpen(true);
+              }}
+            >
+              + New
             </button>
           </div>
 
-          {createMode === "folder" && (
-            <div className="library-composer">
-              <label>
-                Folder name
-                <input
-                  value={newFolderName}
-                  onChange={(event) => setNewFolderName(event.target.value)}
-                />
-              </label>
-
-              <div className="library-composer-actions">
-                <button type="button" onClick={resetComposer}>
-                  Cancel
-                </button>
-
-                <button type="button" onClick={() => void handleCreateFolder()}>
-                  Create folder
-                </button>
-              </div>
-            </div>
-          )}
-
-          {(createMode === "note" || createMode === "list") && (
-            <div className="library-composer">
-              <label>
-                Title
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                />
-              </label>
-
-              <label>
-                {createMode === "note" ? "Note" : "List items"}
-
-                <textarea
-                  value={content}
-                  placeholder={
-                    createMode === "list"
-                      ? "One item per line"
-                      : "Write something..."
-                  }
-                  rows={7}
-                  onChange={(event) => setContent(event.target.value)}
-                />
-              </label>
-
-              <div className="library-composer-actions">
-                <button type="button" onClick={resetComposer}>
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    void (createMode === "note"
-                      ? handleCreateNote()
-                      : handleCreateList())
-                  }
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -376,14 +536,25 @@ function LibraryView() {
             {selectedItemIds.length === 1 ? "selected" : "selected"}
           </strong>
 
-          <button
-            type="button"
-            className="library-merge-button"
-            disabled={!canMerge}
-            onClick={handleOpenMerge}
-          >
-            Merge
-          </button>
+          <div className="library-selection-actions">
+            <button
+              type="button"
+              className="library-move-button"
+              disabled={!canMove}
+              onClick={handleOpenMove}
+            >
+              Move
+            </button>
+
+            <button
+              type="button"
+              className="library-merge-button"
+              disabled={!canMerge}
+              onClick={handleOpenMerge}
+            >
+              Merge
+            </button>
+          </div>
         </div>
       )}
 
@@ -409,7 +580,24 @@ function LibraryView() {
             onEnterSelection={() => enterSelection(item.id)}
             onToggleSelection={() => toggleSelection(item.id)}
           >
-            <article className="library-card">
+            <article
+              className={[
+                "library-card",
+                `library-card-${item.type}`,
+                !showArchive && !selectionMode ? "library-card-editable" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              role={!showArchive && !selectionMode ? "button" : undefined}
+              tabIndex={!showArchive && !selectionMode ? 0 : undefined}
+              aria-label={
+                !showArchive && !selectionMode
+                  ? `Edit ${item.title}`
+                  : undefined
+              }
+              onClick={(event) => handleCardClick(event, item)}
+              onKeyDown={(event) => handleCardKeyDown(event, item)}
+            >
               <div className="library-card-header">
                 <div>
                   <span className="library-item-kind">
@@ -420,66 +608,339 @@ function LibraryView() {
                 </div>
               </div>
 
-              {item.type === "note" ? (
-                <p className="library-note-content">{item.content}</p>
-              ) : (
-                <ul className="library-checklist">
-                  {item.items.map((checklistItem) => (
-                    <li key={checklistItem.id}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={checklistItem.checked}
-                          disabled={showArchive}
-                          onChange={async () => {
-                            setItems(
-                              await toggleLibraryChecklistItem(
-                                item.id,
-                                checklistItem.id,
-                              ),
-                            );
-                          }}
-                        />
+              <div className="library-card-preview">
+                {item.type === "note" ? (
+                  <p className="library-note-content library-note-preview">
+                    {item.content || "Empty note"}
+                  </p>
+                ) : (
+                  <div className="library-list-preview">
+                    {item.items.length === 0 ? (
+                      <p className="library-list-empty">Empty list</p>
+                    ) : (
+                      <ul className="library-checklist library-checklist-full">
+                        {item.items.map((checklistItem) => (
+                          <li key={checklistItem.id}>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={checklistItem.checked}
+                                disabled={showArchive}
+                                onChange={async () => {
+                                  setItems(
+                                    await toggleLibraryChecklistItem(
+                                      item.id,
+                                      checklistItem.id,
+                                    ),
+                                  );
+                                }}
+                              />
 
-                        <span>{checklistItem.text}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {!selectionMode && (
+                              <span>{checklistItem.text}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+              {!selectionMode && showArchive && (
                 <div className="library-card-actions">
-                  {showArchive ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => void handleRestore(item.id)}
-                      >
-                        Restore
-                      </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRestore(item.id)}
+                  >
+                    Restore
+                  </button>
 
-                      <button
-                        type="button"
-                        className="library-permanent-delete"
-                        onClick={() => void handlePermanentDelete(item.id)}
-                      >
-                        Delete permanently
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void handleArchive(item.id)}
-                    >
-                      Archive
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="library-permanent-delete"
+                    onClick={() => void handlePermanentDelete(item.id)}
+                  >
+                    Delete permanently
+                  </button>
                 </div>
               )}
             </article>
           </LongPressSelectable>
         ))}
       </div>
+
+      <ModalSheet
+        open={newPickerOpen}
+        tone="library"
+        ariaLabel={
+          createMode === "note"
+            ? "New Library Note"
+            : createMode === "list"
+              ? "New Library List"
+              : createMode === "folder"
+                ? "New Library Folder"
+                : "Create Library item"
+        }
+        onClose={closeNewItemFlow}
+      >
+        {createMode === null ? (
+          <div className="library-new-picker">
+            <div>
+              <h2>New Library item</h2>
+
+              <p>Choose what you want to create.</p>
+            </div>
+
+            <div className="library-new-options">
+              <button type="button" onClick={() => beginCreate("note")}>
+                <strong>Note</strong>
+                <span>Write and keep reference text.</span>
+              </button>
+
+              <button type="button" onClick={() => beginCreate("list")}>
+                <strong>List</strong>
+                <span>Create a checklist you can use directly.</span>
+              </button>
+
+              <button type="button" onClick={() => beginCreate("folder")}>
+                <strong>Folder</strong>
+                <span>Organize Library items into another folder.</span>
+              </button>
+            </div>
+          </div>
+        ) : createMode === "folder" ? (
+          <div className="library-quick-composer">
+            <div className="library-quick-composer-heading">
+              <strong>New Library Folder</strong>
+            </div>
+
+            <label>
+              Folder name
+
+              <input
+                type="text"
+                value={newFolderName}
+                placeholder="Recipes"
+                onChange={(event) => setNewFolderName(event.target.value)}
+              />
+            </label>
+
+            <div className="library-quick-actions">
+              <button type="button" onClick={closeNewItemFlow}>
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="library-quick-save"
+                onClick={() => void handleCreateFolder()}
+              >
+                Create folder
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="library-quick-composer">
+            <div className="library-quick-composer-heading">
+              <strong>
+                {createMode === "note"
+                  ? "New Library Note"
+                  : "New Library List"}
+              </strong>
+            </div>
+
+            <label>
+              Folder
+
+              <select
+                value={selectedFolderId}
+                onChange={(event) =>
+                  void handleFolderChange(event.target.value)
+                }
+              >
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Title
+              <span className="optional-label">optional</span>
+
+              <input
+                type="text"
+                value={title}
+                placeholder={
+                  createMode === "note"
+                    ? "Garden ideas"
+                    : "Weekend shopping"
+                }
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+
+            <label>
+              {createMode === "note" ? "Note" : "List items"}
+
+              <textarea
+                rows={8}
+                value={content}
+                placeholder={
+                  createMode === "note"
+                    ? "Write something..."
+                    : "One item per line"
+                }
+                onChange={(event) => setContent(event.target.value)}
+              />
+            </label>
+
+            <div className="library-quick-actions">
+              <button type="button" onClick={closeNewItemFlow}>
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="library-quick-save"
+                onClick={() =>
+                  void (createMode === "note"
+                    ? handleCreateNote()
+                    : handleCreateList())
+                }
+              >
+                Save to Library
+              </button>
+            </div>
+          </div>
+        )}
+      </ModalSheet>
+
+      <ModalSheet
+        open={moveOpen}
+        tone="library"
+        ariaLabel="Move Library items"
+        onClose={() => setMoveOpen(false)}
+      >
+        <div className="library-move-form">
+          <div>
+            <h2>
+              Move {selectedItemIds.length}{" "}
+              {selectedItemIds.length === 1 ? "item" : "items"}
+            </h2>
+
+            <p>Choose the folder these Library items should move to.</p>
+          </div>
+
+          <label>
+            Folder
+
+            <select
+              value={moveFolderId}
+              onChange={(event) => setMoveFolderId(event.target.value)}
+            >
+              {moveDestinationFolders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {moveError && <p className="form-error">{moveError}</p>}
+
+          <div className="library-move-actions">
+            <button type="button" onClick={() => setMoveOpen(false)}>
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              className="library-move-confirm"
+              disabled={!moveFolderId}
+              onClick={() => void handleMove()}
+            >
+              Move
+            </button>
+          </div>
+        </div>
+      </ModalSheet>
+
+      <ModalSheet
+        open={editingItem !== null}
+        tone="library"
+        ariaLabel={
+          editingItem ? `Edit ${editingItem.title}` : "Edit Library item"
+        }
+        onClose={closeItemEditor}
+      >
+        {editingItem && (
+          <div className="library-edit-form">
+            <div className="library-edit-heading">
+              <span className="library-item-kind">
+                {editingItem.type === "note" ? "Note" : "List"}
+              </span>
+
+              <h2>Edit {editingItem.type === "note" ? "note" : "list"}</h2>
+            </div>
+
+            <label>
+              Title
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+              />
+            </label>
+
+            <label>
+              {editingItem.type === "note" ? "Note" : "List items"}
+
+              <textarea
+                value={editContent}
+                rows={10}
+                placeholder={
+                  editingItem.type === "list"
+                    ? "One item per line"
+                    : "Write something..."
+                }
+                onChange={(event) => setEditContent(event.target.value)}
+              />
+            </label>
+
+            {editingItem.type === "list" && (
+              <p className="library-edit-hint">
+                One item per line. Existing checked items keep their state where
+                possible.
+              </p>
+            )}
+
+            <div className="library-edit-actions">
+              <button
+                type="button"
+                className="library-edit-archive"
+                onClick={() => void handleArchiveEditingItem()}
+              >
+                Archive
+              </button>
+
+              <button type="button" onClick={closeItemEditor}>
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="library-edit-save"
+                onClick={() => void handleSaveItemEdit()}
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        )}
+      </ModalSheet>
+
       <ModalSheet
         open={mergeOpen}
         tone="library"

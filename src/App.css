@@ -2395,6 +2395,198 @@ body,
   }
 }
 
+/* Library compact cards */
+
+.library-card {
+  display: flex;
+  flex-direction: column;
+
+  height: 210px;
+
+  overflow: hidden;
+}
+
+.library-card-editable {
+  cursor: pointer;
+
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.library-card-editable:hover {
+  border-color: var(--dw-library-border);
+
+  background: var(--dw-library-surface);
+}
+
+.library-card-editable:focus-visible {
+  outline: 2px solid var(--dw-library-accent);
+  outline-offset: 2px;
+}
+
+.library-card h3 {
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+
+  overflow-wrap: anywhere;
+}
+
+.library-card-preview {
+  min-height: 0;
+
+  flex: 1;
+
+  overflow: hidden;
+}
+
+.library-note-preview {
+  display: -webkit-box;
+
+  margin: 12px 0 0;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+
+  line-clamp: 4;
+  -webkit-line-clamp: 4;
+
+  color: var(--dw-text-soft);
+
+  line-height: 1.5;
+
+  overflow-wrap: anywhere;
+}
+
+.library-list-preview {
+  display: grid;
+
+  gap: 7px;
+
+  margin-top: 12px;
+}
+
+.library-checklist-preview {
+  gap: 6px;
+
+  margin: 0;
+}
+
+.library-checklist-preview li {
+  min-width: 0;
+}
+
+.library-checklist-preview label {
+  min-width: 0;
+}
+
+.library-checklist-preview label span {
+  min-width: 0;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-list-more {
+  color: var(--dw-muted);
+
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.library-card-actions {
+  flex: 0 0 auto;
+
+  margin-top: auto;
+}
+
+/* Library item editor */
+
+.library-edit-form {
+  display: grid;
+
+  gap: 18px;
+}
+
+.library-edit-heading h2 {
+  margin: 4px 0 0;
+
+  font-size: 1.2rem;
+}
+
+.library-edit-form > label {
+  display: grid;
+
+  gap: 7px;
+
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.library-edit-form input,
+.library-edit-form textarea {
+  width: 100%;
+
+  padding: 11px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 10px;
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+
+  font: inherit;
+}
+
+.library-edit-form textarea {
+  resize: vertical;
+}
+
+.library-edit-hint {
+  margin: -8px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.library-edit-actions {
+  display: flex;
+
+  justify-content: flex-end;
+
+  gap: 8px;
+}
+
+.library-edit-actions button {
+  padding: 10px 13px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 9px;
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+}
+
+.library-edit-actions .library-edit-save {
+  background: var(--dw-library-surface);
+
+  color: var(--dw-library-accent);
+
+  font-weight: 700;
+}
+
 /* Responsive modal / bottom sheet */
 
 .modal-sheet-backdrop {
@@ -3672,4 +3864,300 @@ select:focus-visible {
 
 .modal-sheet {
   box-shadow: 0 24px 70px var(--dw-shadow);
+}
+
+/* Library filters, expanded lists and moving */
+
+.library-filter-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  gap: 8px;
+}
+
+.library-filter-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  gap: 6px;
+}
+
+.library-filter-group button,
+.library-new-button {
+  min-width: 0;
+
+  padding: 10px 11px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 10px;
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.library-filter-group button.active {
+  border-color: var(--dw-library-accent);
+
+  background: var(--dw-library-surface);
+
+  color: var(--dw-library-accent);
+}
+
+.library-new-button {
+  background: var(--dw-library-surface);
+
+  color: var(--dw-library-accent);
+
+  font-weight: 700;
+}
+
+/*
+ * Notes stay compact.
+ * Lists are functional checklists
+ * and grow to fit all their items.
+ */
+
+.library-card {
+  height: auto;
+}
+
+.library-card-note {
+  height: 210px;
+
+  overflow: hidden;
+}
+
+.library-card-list {
+  height: auto;
+
+  overflow: visible;
+}
+
+.library-card-list .library-card-preview {
+  flex: none;
+
+  overflow: visible;
+}
+
+.library-checklist-full {
+  margin: 12px 0 0;
+}
+
+.library-checklist-full li,
+.library-checklist-full label {
+  min-width: 0;
+}
+
+.library-checklist-full span {
+  overflow-wrap: anywhere;
+}
+
+.library-list-empty {
+  margin: 12px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.8rem;
+}
+
+/* Selection actions */
+
+.library-selection-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+}
+
+.library-move-button,
+.library-merge-button {
+  padding: 9px 12px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 9px;
+
+  background: var(--dw-library-surface);
+
+  color: var(--dw-library-accent);
+
+  font-weight: 700;
+}
+
+.library-move-button:disabled,
+.library-merge-button:disabled {
+  opacity: 0.4;
+}
+
+/* New item chooser */
+
+.library-new-picker {
+  display: grid;
+
+  gap: 18px;
+}
+
+.library-new-picker h2 {
+  margin: 0;
+
+  font-size: 1.2rem;
+}
+
+.library-new-picker p {
+  margin: 5px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.8rem;
+}
+
+.library-new-options {
+  display: grid;
+
+  gap: 8px;
+}
+
+.library-new-options button {
+  display: grid;
+
+  gap: 4px;
+
+  padding: 14px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 11px;
+
+  background: var(--dw-library-surface);
+
+  color: var(--dw-text);
+
+  text-align: left;
+}
+
+.library-new-options button strong {
+  color: var(--dw-library-accent);
+}
+
+.library-new-options button span {
+  color: var(--dw-muted);
+
+  font-size: 0.75rem;
+}
+
+/* Move folder sheet */
+
+.library-move-form {
+  display: grid;
+
+  gap: 18px;
+}
+
+.library-move-form h2 {
+  margin: 0;
+
+  font-size: 1.2rem;
+}
+
+.library-move-form p {
+  margin: 5px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.library-move-form > label {
+  display: grid;
+
+  gap: 7px;
+
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.library-move-form select {
+  width: 100%;
+
+  padding: 11px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 10px;
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+}
+
+.library-move-actions {
+  display: flex;
+
+  justify-content: flex-end;
+
+  gap: 8px;
+}
+
+.library-move-actions button {
+  padding: 10px 13px;
+
+  border: 1px solid var(--dw-library-border);
+  border-radius: 9px;
+
+  background: var(--dw-surface);
+
+  color: var(--dw-text);
+}
+
+.library-move-actions .library-move-confirm {
+  background: var(--dw-library-surface);
+
+  color: var(--dw-library-accent);
+
+  font-weight: 700;
+}
+
+.library-edit-archive {
+  margin-right: auto;
+
+  color: var(--dw-danger);
+}
+
+.settings-toggle-row {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  cursor: pointer;
+}
+
+.settings-toggle-row > div {
+  min-width: 0;
+}
+
+.settings-toggle-row p {
+  margin: 4px 0 0;
+
+  color: var(--dw-muted);
+
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.settings-toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+
+  flex: 0 0 auto;
+
+  accent-color: var(--dw-accent);
+
+  cursor: pointer;
 }

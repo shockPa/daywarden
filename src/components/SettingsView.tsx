@@ -4,6 +4,8 @@ import BackupRestorePanel from "./BackupRestorePanel";
 interface SettingsViewProps {
   themeMode: ThemeMode;
 
+  showLibraryOnToday: boolean;
+
   offlineReady: boolean;
 
   needRefresh: boolean;
@@ -16,6 +18,8 @@ interface SettingsViewProps {
 
   onThemeChange: (mode: ThemeMode) => void;
 
+  onShowLibraryOnTodayChange: (value: boolean) => void;
+
   onCheckForUpdates: () => void;
 
   onInstallUpdate: () => void;
@@ -27,12 +31,14 @@ interface SettingsViewProps {
 
 function SettingsView({
   themeMode,
+  showLibraryOnToday,
   offlineReady,
   needRefresh,
   checkingForUpdates,
   lastUpdateCheck,
   updateMessage,
   onThemeChange,
+  onShowLibraryOnTodayChange,
   onCheckForUpdates,
   onInstallUpdate,
   onManageEntryTypes,
@@ -74,6 +80,28 @@ function SettingsView({
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="settings-section">
+        <h2>Today</h2>
+
+        <label className="settings-toggle-row">
+          <div>
+            <strong>Show Library shortcuts</strong>
+
+            <p>
+              Show quick buttons for creating Library notes and lists on Today.
+            </p>
+          </div>
+
+          <input
+            type="checkbox"
+            checked={showLibraryOnToday}
+            onChange={(event) =>
+              onShowLibraryOnTodayChange(event.target.checked)
+            }
+          />
+        </label>
       </section>
 
       <section className="settings-section">

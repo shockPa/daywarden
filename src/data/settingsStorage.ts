@@ -6,6 +6,8 @@ const THEME_KEY = "themeMode";
 
 const LAST_UPDATE_CHECK_KEY = "lastUpdateCheck";
 
+const SHOW_LIBRARY_ON_TODAY_KEY = "showLibraryOnToday";
+
 const CALENDAR_LENS_ENTRY_TYPE_KEY = "calendarLensEntryTypeId";
 
 const CALENDAR_LENS_ENTRY_TYPE_IDS_KEY = "calendarLensEntryTypeIds";
@@ -40,6 +42,22 @@ export async function saveLastUpdateCheck(value: string): Promise<void> {
   const database = await getDaywardenDb();
 
   await database.put("settings", value, LAST_UPDATE_CHECK_KEY);
+}
+
+export async function getShowLibraryOnToday(): Promise<boolean> {
+  const database = await getDaywardenDb();
+
+  const value = await database.get("settings", SHOW_LIBRARY_ON_TODAY_KEY);
+
+  return value === true;
+}
+
+export async function saveShowLibraryOnToday(
+  value: boolean,
+): Promise<void> {
+  const database = await getDaywardenDb();
+
+  await database.put("settings", value, SHOW_LIBRARY_ON_TODAY_KEY);
 }
 
 export async function getCalendarLensEntryTypeIds(): Promise<string[] | null> {
